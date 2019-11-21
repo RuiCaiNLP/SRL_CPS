@@ -517,7 +517,7 @@ if __name__ == '__main__':
             for batch_i, train_input_data in enumerate(
                     inter_utils.get_batch(train_dataset, batch_size, word2idx, fr_word2idx,
                                           lemma2idx, pos2idx, pretrain2idx, fr_pretrain2idx,
-                                          deprel2idx, argument2idx, idx2word, shuffle=False,
+                                          deprel2idx, argument2idx, idx2word, shuffle=True,
                                           lang='En')):
 
                 flat_argument = train_input_data['flat_argument']
