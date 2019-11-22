@@ -80,8 +80,8 @@ class SR_Labeler(nn.Module):
 class SR_Compressor(nn.Module):
     def __init__(self, model_params):
         super(SR_Compressor, self).__init__()
-        self.dropout_word = nn.Dropout(p=0.3)
-        self.dropout_hidden = nn.Dropout(p=0.3)
+        self.dropout_word = nn.Dropout(p=0.0)
+        self.dropout_hidden = nn.Dropout(p=0.0)
         self.dropout_mlp = model_params['dropout_mlp']
         self.batch_size = model_params['batch_size']
 
@@ -131,7 +131,7 @@ class SR_Compressor(nn.Module):
 class SR_Matcher(nn.Module):
     def __init__(self, model_params):
         super(SR_Matcher, self).__init__()
-        self.dropout_word = nn.Dropout(p=0.3)
+        self.dropout_word = nn.Dropout(p=0.0)
         self.mlp_size = 300
         self.dropout_mlp = model_params['dropout_mlp']
         self.batch_size = model_params['batch_size']
@@ -450,7 +450,7 @@ class SR_Model(nn.Module):
         SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
         SRL_input = SRL_input
         pred_recur = self.SR_Compressor(SRL_input, pretrain_emb,
-                                        flag_emb.detach(), word_id_emb, predicates_1D, seq_len, para=False)
+                                        flag_emb, word_id_emb, predicates_1D, seq_len, para=False)
 
         output_word = self.SR_Matcher(pred_recur, pretrain_emb, flag_emb.detach(), word_id_emb.detach(), seq_len, para=False)
         return SRL_output, output_word
