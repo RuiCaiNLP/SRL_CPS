@@ -530,7 +530,7 @@ if __name__ == '__main__':
                     log(batch_i, loss, loss_word)
 
                 optimizer.zero_grad()
-                (loss + loss_word).backward()
+                loss.backward()
                 optimizer.step()
 
                 #batch_size=1
