@@ -519,7 +519,7 @@ if __name__ == '__main__':
                                           lemma2idx, pos2idx, pretrain2idx, fr_pretrain2idx,
                                           deprel2idx, argument2idx, idx2word, shuffle=True,
                                           lang='En')):
-
+                srl_model.train()
                 flat_argument = train_input_data['flat_argument']
                 target_batch_variable = get_torch_variable_from_np(flat_argument)
 
@@ -564,12 +564,9 @@ if __name__ == '__main__':
                 #    log(batch_i, loss_word)
 
                 if batch_i > 0 and batch_i % show_steps == 0:
-
+                    srl_model.eval()
                     _, pred = torch.max(out, 1)
-
                     pred = get_data(pred)
-
-                    # pred = pred.reshape([bs, sl])
 
                     log('\n')
                     log('*' * 80)
