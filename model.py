@@ -61,7 +61,7 @@ class SR_Labeler(nn.Module):
         input_emb = torch.cat((pretrained_emb, flag_emb), 2)
         if para == False:
             input_emb = self.dropout_word(input_emb)
-        input_emb = self.dropout_word(input_emb)
+
         bilstm_output, (_, bilstm_final_state) = self.bilstm_layer(input_emb, self.bilstm_hidden_state)
         bilstm_output = bilstm_output.contiguous()
         hidden_input = bilstm_output.view(bilstm_output.shape[0] * bilstm_output.shape[1], -1)
