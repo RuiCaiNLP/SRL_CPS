@@ -448,7 +448,7 @@ class SR_Model(nn.Module):
 
 
         SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
-        SRL_input = SRL_input.detach()
+        SRL_input = SRL_input
         pred_recur = self.SR_Compressor(SRL_input, pretrain_emb,
                                         flag_emb.detach(), word_id_emb, predicates_1D, seq_len, para=False)
 
