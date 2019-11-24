@@ -281,7 +281,7 @@ class SR_Model(nn.Module):
         unlabeled_loss_function = nn.KLDivLoss(size_average=True)
         output_word_en = F.softmax(output_word_en, dim=1).detach()
         output_word_fr = F.log_softmax(output_word_fr, dim=1)
-        loss = unlabeled_loss_function(output_word_fr, output_word_en)/(seq_len_en*self.para_batch_size)
+        loss = unlabeled_loss_function(output_word_fr, output_word_en)/(seq_len_en*self.batch_size)
 
         #############################################3
         """
@@ -300,7 +300,7 @@ class SR_Model(nn.Module):
         unlabeled_loss_function = nn.KLDivLoss(size_average=True)
         output_word_en = F.softmax(output_word_en, dim=1).detach()
         output_word_fr = F.log_softmax(output_word_fr, dim=1)
-        loss_2 = unlabeled_loss_function(output_word_fr, output_word_en) / (seq_len_fr*self.para_batch_size)
+        loss_2 = unlabeled_loss_function(output_word_fr, output_word_en) / (seq_len_fr*self.batch_size)
         return loss, loss_2
 
 
