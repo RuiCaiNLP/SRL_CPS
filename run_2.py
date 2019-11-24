@@ -554,7 +554,7 @@ if __name__ == '__main__':
 
 
                 u_loss_pair, loss_word, = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True)
-                optimizer.zero_grad()
+                optimizer_para.zero_grad()
                 u_loss, u_loss_2 = u_loss_pair
                 (u_loss + u_loss_2).backward()
                 optimizer_para.step()
