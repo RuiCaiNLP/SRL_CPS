@@ -278,7 +278,7 @@ class SR_Model(nn.Module):
         output_word_fr = self.SR_Matcher(pred_recur_fr, pretrain_emb, flag_emb.detach(), word_id_emb.detach(), seq_len,
                                       para=True)
 
-        unlabeled_loss_function = nn.KLDivLoss(size_average=True)
+        unlabeled_loss_function = nn.KLDivLoss(size_average=False)
         output_word_en = F.softmax(output_word_en, dim=1).detach()
         output_word_fr = F.log_softmax(output_word_fr, dim=1)
         loss = unlabeled_loss_function(output_word_fr, output_word_en)/(seq_len_en*self.batch_size)
@@ -297,7 +297,7 @@ class SR_Model(nn.Module):
         output_word_fr = self.SR_Matcher(pred_recur_fr, pretrain_emb_fr, flag_emb_fr.detach(), word_id_emb_fr.detach(), seq_len_fr,
                                          para=True)
 
-        unlabeled_loss_function = nn.KLDivLoss(size_average=True)
+        unlabeled_loss_function = nn.KLDivLoss(size_average=False)
         output_word_en = F.softmax(output_word_en, dim=1).detach()
         output_word_fr = F.log_softmax(output_word_fr, dim=1)
         loss_2 = unlabeled_loss_function(output_word_fr, output_word_en) / (seq_len_fr*self.batch_size)

@@ -561,7 +561,7 @@ if __name__ == '__main__':
 
                 if batch_i % 50 == 0:
                     log(batch_i, u_loss, u_loss_2)
-                    log(batch_i, loss_word)
+                    #log(batch_i, loss_word)
 
                 if batch_i > 0 and batch_i % show_steps == 0:
                     srl_model.eval()
