@@ -114,16 +114,10 @@ class SR_Compressor(nn.Module):
 
     def forward(self, SRL_input, pretrained_emb, flag_emb, word_id_emb, predicates_1D, seq_len, para=False):
         SRL_input = SRL_input.view(self.batch_size, seq_len, -1)
-        SRL_input = SRL_input.detach()
-        input_emb_word = torch.cat((pretrained_emb, flag_emb), 2)
-        if para == False:
-            input_emb_word = self.dropout_word(input_emb_word)
-        compress_input = torch.cat((input_emb_word, word_id_emb, SRL_input), 2)
+        compress_input = torch.cat((pretrained_emb, flag_emb, word_id_emb, SRL_input), 2)
         bilstm_output_word, (_, bilstm_final_state_word) = self.bilstm_layer_word(compress_input,
                                                                                   self.bilstm_hidden_state_word)
         bilstm_output_word = bilstm_output_word.contiguous()
-        if para == False:
-            bilstm_output_word = self.dropout_hidden(bilstm_output_word)
         pred_recur = bilstm_output_word[np.arange(0, self.batch_size), predicates_1D]
         return pred_recur
 
@@ -147,12 +141,9 @@ class SR_Matcher(nn.Module):
                                         nn.ReLU(),
                                         nn.Linear(self.mlp_size, self.target_vocab_size))
     def forward(self, pred_recur, pretrained_emb, flag_emb, word_id_emb, seq_len, para=False):
-        input_emb_word = torch.cat((pretrained_emb, flag_emb), 2)
-        if para == False:
-            input_emb_word = self.dropout_word(input_emb_word)
         pred_recur = pred_recur.view(self.batch_size, self.bilstm_hidden_size * 2)
         pred_recur = pred_recur.unsqueeze(1).expand(self.batch_size, seq_len, self.bilstm_hidden_size * 2)
-        combine = torch.cat((pred_recur, input_emb_word, word_id_emb), 2)
+        combine = torch.cat((pred_recur, pretrained_emb, flag_emb, word_id_emb), 2)
         output_word = self.match_word(combine)
         output_word = output_word.view(self.batch_size * seq_len, -1)
         return output_word
@@ -231,7 +222,6 @@ class SR_Model(nn.Module):
         pretrain_batch_fr = get_torch_variable_from_np(unlabeled_data_fr['pretrain'])
         predicates_1D_fr = unlabeled_data_fr['predicates_idx']
         flag_batch_fr = get_torch_variable_from_np(unlabeled_data_fr['flag'])
-        # log(flag_batch_fr)
         word_id_fr = get_torch_variable_from_np(unlabeled_data_fr['word_times'])
         word_id_emb_fr = self.id_embedding(word_id_fr).detach()
         flag_emb_fr = self.flag_embedding(flag_batch_fr).detach()
@@ -248,28 +238,25 @@ class SR_Model(nn.Module):
         pretrain_emb = self.pretrained_embedding(pretrain_batch).detach()
 
         seq_len = flag_emb.shape[1]
-        SRL_output = self.SR_Labeler(pretrain_emb, flag_emb, predicates_1D, seq_len, para=True)
+        SRL_output = self.SR_Labeler(pretrain_emb, flag_emb.detach(), predicates_1D, seq_len, para=True)
 
         SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
-        SRL_input = SRL_input
-        pred_recur = self.SR_Compressor(SRL_input, pretrain_emb,
-                                        flag_emb.detach(), word_id_emb, predicates_1D, seq_len, para=True)
+        pred_recur = self.SR_Compressor(SRL_input.detach(), pretrain_emb,
+                                        flag_emb.detach(), word_id_emb.detach(), predicates_1D, seq_len, para=True)
 
+
+        seq_len_fr = flag_emb_fr.shape[1]
+        SRL_output_fr = self.SR_Labeler(pretrain_emb_fr, flag_emb_fr.detach(), predicates_1D_fr, seq_len_fr, para=True)
+
+        SRL_input_fr = SRL_output_fr.view(self.batch_size, seq_len_fr, -1)
+        pred_recur_fr = self.SR_Compressor(SRL_input_fr, pretrain_emb_fr,
+                                        flag_emb_fr.detach(), word_id_emb_fr, predicates_1D_fr, seq_len_fr, para=True)
 
         """
         En event vector, En word
         """
-        output_word_en = self.SR_Matcher(pred_recur, pretrain_emb, flag_emb.detach(), word_id_emb.detach(), seq_len,
-                                      para=True)
-
-
-        seq_len_fr = flag_emb_fr.shape[1]
-        SRL_output_fr = self.SR_Labeler(pretrain_emb_fr, flag_emb_fr, predicates_1D_fr, seq_len_fr, para=True)
-
-        SRL_input_fr = SRL_output_fr.view(self.batch_size, seq_len_fr, -1)
-        SRL_input_fr = SRL_input_fr
-        pred_recur_fr = self.SR_Compressor(SRL_input_fr, pretrain_emb_fr,
-                                        flag_emb_fr.detach(), word_id_emb_fr, predicates_1D_fr, seq_len_fr, para=True)
+        output_word_en = self.SR_Matcher(pred_recur.detach(), pretrain_emb, flag_emb.detach(), word_id_emb.detach(), seq_len,
+                                         para=True)
 
         #############################################
         """
@@ -277,26 +264,21 @@ class SR_Model(nn.Module):
         """
         output_word_fr = self.SR_Matcher(pred_recur_fr, pretrain_emb, flag_emb.detach(), word_id_emb.detach(), seq_len,
                                       para=True)
-
         unlabeled_loss_function = nn.KLDivLoss(size_average=False)
         output_word_en = F.softmax(output_word_en, dim=1).detach()
         output_word_fr = F.log_softmax(output_word_fr, dim=1)
         loss = unlabeled_loss_function(output_word_fr, output_word_en)/(seq_len_en*self.batch_size)
-
         #############################################3
         """
         En event vector, Fr word
         """
-        output_word_en = self.SR_Matcher(pred_recur, pretrain_emb_fr, flag_emb_fr.detach(), word_id_emb_fr.detach(), seq_len_fr,
+        output_word_en = self.SR_Matcher(pred_recur.detach(), pretrain_emb_fr, flag_emb_fr.detach(), word_id_emb_fr.detach(), seq_len_fr,
                                          para=True)
-
         """
         Fr event vector, Fr word
         """
-
         output_word_fr = self.SR_Matcher(pred_recur_fr, pretrain_emb_fr, flag_emb_fr.detach(), word_id_emb_fr.detach(), seq_len_fr,
                                          para=True)
-
         unlabeled_loss_function = nn.KLDivLoss(size_average=False)
         output_word_en = F.softmax(output_word_en, dim=1).detach()
         output_word_fr = F.log_softmax(output_word_fr, dim=1)
