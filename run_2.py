@@ -493,7 +493,7 @@ if __name__ == '__main__':
 
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(srl_model.parameters(), lr=learning_rate)
-        optimizer_para = optim.Adam(srl_model.SR_Labeler.parameters(), lr=learning_rate)
+        #optimizer_para = optim.Adam(srl_model.SR_Labeler.parameters(), lr=learning_rate)
 
         log(srl_model)
 
@@ -554,10 +554,10 @@ if __name__ == '__main__':
 
 
                 u_loss_pair, loss_word, = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True)
-                optimizer_para.zero_grad()
+                optimizer.zero_grad()
                 u_loss, u_loss_2 = u_loss_pair
-                (u_loss + u_loss_2).backward()
-                optimizer_para.step()
+                u_loss.backward()
+                optimizer.step()
                 batch_size = 30
 
                 if batch_i % 50 == 0:
