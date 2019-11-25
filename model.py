@@ -254,7 +254,7 @@ class SR_Model(nn.Module):
                                         flag_emb_fr.detach(), word_id_emb_fr, predicates_1D_fr, seq_len_fr, para=True)
 
         L2_loss_function = nn.MSELoss(size_average=False)
-        l2_loss = L2_loss_function(pred_recur_fr, pred_recur.detach())
+        l2_loss = L2_loss_function(pred_recur_fr, pred_recur.detach())/self.batch_size
         """
         En event vector, En word
         """
