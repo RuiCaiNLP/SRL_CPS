@@ -245,6 +245,7 @@ class SR_Model(nn.Module):
                                         flag_emb.detach(), word_id_emb.detach(), predicates_1D, seq_len, para=True)
 
 
+
         seq_len_fr = flag_emb_fr.shape[1]
         SRL_output_fr = self.SR_Labeler(pretrain_emb_fr, flag_emb_fr.detach(), predicates_1D_fr, seq_len_fr, para=True)
 
@@ -252,6 +253,8 @@ class SR_Model(nn.Module):
         pred_recur_fr = self.SR_Compressor(SRL_input_fr, pretrain_emb_fr,
                                         flag_emb_fr.detach(), word_id_emb_fr, predicates_1D_fr, seq_len_fr, para=True)
 
+        L2_loss_function = nn.MSELoss(size_average=False)
+        l2_loss = L2_loss_function(pred_recur_fr, pred_recur.detach())
         """
         En event vector, En word
         """
@@ -283,7 +286,7 @@ class SR_Model(nn.Module):
         output_word_en = F.softmax(output_word_en, dim=1).detach()
         output_word_fr = F.log_softmax(output_word_fr, dim=1)
         loss_2 = unlabeled_loss_function(output_word_fr, output_word_en) / (seq_len_fr*self.batch_size)
-        return loss, loss_2
+        return l2_loss, loss, loss_2
 
 
 
