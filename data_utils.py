@@ -564,7 +564,8 @@ def make_argument_vocab(train_file, dev_file, test_file, output_path, freq_lower
     if use_nomore_tag:
         argument_vocab = [_PAD_, _BOA_, _EOA_]
     else:
-        argument_vocab = [_PAD_]
+        #argument_vocab = [_PAD_]
+        argument_vocab = []
 
     if use_lower_bound:
         argument_vocab = argument_vocab + [item[0] for item in argument_data_counter if item[1]>=freq_lower_bound]
@@ -815,8 +816,8 @@ def fr_shrink_pretrained_embedding(train_file, dev_file, test_file, pretrained_f
     pretrained_embedding = [
         [0.0] * pretrained_emb_size,
         [0.1] * pretrained_emb_size,
-        [0.0] * pretrained_emb_size,
-        [0.0] * pretrained_emb_size
+        [0.2] * pretrained_emb_size,
+        [-0.1] * pretrained_emb_size
     ]
 
     with open(pretrained_file, 'r') as f:

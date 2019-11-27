@@ -52,7 +52,8 @@ def sem_f1_score(target, predict, argument2idx, unify_pred = False, predicate_co
                 if pred_i == golden_i:
                     predicate_correct += 1
             else:
-                if golden_i == argument2idx[_PAD_]:
+                #if golden_i == argument2idx[_PAD_]:
+                if golden_i == 0:
                     continue
                 total += 1
                 #if pred_i == argument2idx[_UNK_]:
@@ -94,7 +95,8 @@ def eval_train_batch(epoch,batch_i,loss,golden_batch,predict_batch,argument2idx)
     for i in range(len(golden_batch)):
         pred_i = predict_batch[i]
         golden_i = golden_batch[i]
-        if golden_i == argument2idx[_PAD_]:
+        #if golden_i == argument2idx[_PAD_]:
+        if golden_i == 0:
             continue
         batch_total += 1
 
