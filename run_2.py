@@ -491,7 +491,7 @@ if __name__ == '__main__':
         if USE_CUDA:
             srl_model.cuda()
 
-        criterion = nn.CrossEntropyLoss()
+        criterion = nn.CrossEntropyLoss(ignore_index=0)
         optimizer = optim.Adam(srl_model.parameters(), lr=learning_rate)
         #optimizer_para = optim.Adam(srl_model.SR_Labeler.parameters(), lr=learning_rate)
 
