@@ -491,7 +491,8 @@ if __name__ == '__main__':
         if USE_CUDA:
             srl_model.cuda()
 
-        criterion = nn.CrossEntropyLoss(ignore_index=0)
+        criterion_word = nn.CrossEntropyLoss(ignore_index=0)
+        criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(srl_model.parameters(), lr=learning_rate)
         #optimizer_para = optim.Adam(srl_model.SR_Labeler.parameters(), lr=learning_rate)
 
@@ -526,7 +527,7 @@ if __name__ == '__main__':
 
                 out, out_word = srl_model(train_input_data, lang='En')
                 loss = criterion(out, target_batch_variable)
-                loss_word = criterion(out_word, target_batch_variable)
+                loss_word = criterion_word(out_word, target_batch_variable)
                 if batch_i % 50 == 0:
                     log(batch_i, loss, loss_word)
 
