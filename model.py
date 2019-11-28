@@ -139,18 +139,18 @@ class SR_Matcher(nn.Module):
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
         self.match_word = nn.Sequential(nn.Linear(2 * self.bilstm_hidden_size+300+2*self.flag_emb_size, self.mlp_size),
                                         nn.ReLU(),
-                                        nn.Linear(self.mlp_size, self.target_vocab_size-1))
+                                        nn.Linear(self.mlp_size, self.target_vocab_size-2))
 
     def forward(self, pred_recur, pretrained_emb, flag_emb, word_id_emb, seq_len, para=False):
         pred_recur = pred_recur.view(self.batch_size, self.bilstm_hidden_size * 2)
         pred_recur = pred_recur.unsqueeze(1).expand(self.batch_size, seq_len, self.bilstm_hidden_size * 2)
         combine = torch.cat((pred_recur, pretrained_emb, flag_emb, word_id_emb), 2)
         output_word = self.match_word(combine)
+
         zerosNull = get_torch_variable_from_np(np.zeros((self.batch_size, seq_len, 1), dtype='float32'))
         zerosPad = get_torch_variable_from_np(np.zeros((self.batch_size, seq_len, 1), dtype='float32'))
         zerosPad = torch.add(zerosPad, -1.0)* 10. ** 6.
-        output_word = torch.cat((zerosPad, zerosNull,
-                                 output_word[:,:,1:].view(self.batch_size, seq_len, self.target_vocab_size-2)), 2)
+        output_word = torch.cat((zerosPad, zerosNull, output_word), 2)
         output_word = output_word.view(self.batch_size * seq_len, -1)
 
         return output_word

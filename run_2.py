@@ -432,11 +432,6 @@ if __name__ == '__main__':
     use_self_attn = args.use_self_attn
     self_attn_head = args.self_attn_heads
 
-    #use_tree_lstm = args.use_tree_lstm
-    #use_sa_lstm = args.use_sa_lstm
-    #use_gcn = args.use_gcn
-    #use_rcnn = args.use_rcnn
-
     if args.train:
         FLAG = 'TRAIN'
     if args.eval:
