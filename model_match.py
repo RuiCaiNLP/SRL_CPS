@@ -130,7 +130,7 @@ class SR_Matcher(nn.Module):
                     get_torch_variable_from_np(np.zeros((self.pretrain_emb_size+self.flag_emb_size, 200)).astype("float32")))
 
     def forward(self, role_vectors, pretrained_emb, word_id_emb, seq_len, para=False):
-        query_vector = torch.cat((pretrained_emb, word_id_emb))
+        query_vector = torch.cat((pretrained_emb, word_id_emb), 2)
         role_vectors = role_vectors.view(self.batch_size, self.target_vocab_size, 200)
         # B T R V
         role_vectors = role_vectors.unsqueeze(1).expand(self.batch_size, seq_len, self.target_vocab_size, 200)
