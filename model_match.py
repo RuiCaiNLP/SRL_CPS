@@ -138,13 +138,14 @@ class SR_Matcher(nn.Module):
         query_vector = query_vector.unsqueeze(2).expand(self.batch_size, seq_len, self.target_vocab_size,
                                                         self.pretrain_emb_size+self.flag_emb_size)
         # B T R V
-        y = torch.mm(query_vector, self.matrix)
+        y = torch.mm(query_vector.contiguous().view(self.batch_size*seq_len*self.target_vocab_size, -1), self.matrix)
         # B T R
+        y = y.contiguous().view(self.batch_size, seq_len, self.target_vocab_size, 200)
         roles_scores = torch.sum(role_vectors*y, dim=3)
-
         zerosNull = get_torch_variable_from_np(np.zeros((self.batch_size, seq_len, 1), dtype='float32'))
+        roles_scores = roles_scores.view(self.batch_size, seq_len, -1)
 
-        output_word = torch.cat((roles_scores[:,:,0], zerosNull, roles_scores[:,:,2:]), 2)
+        output_word = torch.cat((roles_scores[:,:,0:1], zerosNull, roles_scores[:,:,2:]), 2)
         output_word = output_word.view(self.batch_size * seq_len, -1)
 
         return output_word
