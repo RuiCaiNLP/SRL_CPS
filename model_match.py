@@ -317,7 +317,7 @@ class SR_Model(nn.Module):
         SRL_output = self.SR_Labeler(pretrain_emb, flag_emb, predicates_1D, seq_len, para=False)
 
         SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
-        SRL_input = SRL_input
+        SRL_input = SRL_input.detach()
         pred_recur = self.SR_Compressor(SRL_input, pretrain_emb, word_id_emb, seq_len, para=False)
 
         output_word = self.SR_Matcher(pred_recur, pretrain_emb, word_id_emb.detach(), seq_len, para=False)
