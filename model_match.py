@@ -104,8 +104,13 @@ class SR_Compressor(nn.Module):
         role_vectors = self.hidden2vector(compress_input)
         # B T R V
         role_vectors = role_vectors.unsqueeze(2).expand(self.batch_size, seq_len, self.target_vocab_size, 200)
-        # B T R 1
-        word_weights = F.softmax(SRL_input, dim=1).view(self.batch_size, seq_len, self.target_vocab_size, 1)
+        # B T R
+        word_weights = F.softmax(SRL_input, dim=2).view(self.batch_size, seq_len, self.target_vocab_size)
+        # B T R -> B 1 R ->  B T R
+        weights_sum = torch.sum(word_weights, dim=1, keepdim=True).expand(self.batch_size, seq_len, self.target_vocab_size)
+        word_weights = word_weights/weights_sum
+        word_weights = word_weights.view(self.batch_size, seq_len, self.target_vocab_size, 1)
+        #word_weights = F.softmax(SRL_input, dim=1).view(self.batch_size, seq_len, self.target_vocab_size, 1)
         # B R V
         compressor_vector = torch.sum(role_vectors*word_weights, dim=1)
         return compressor_vector
@@ -312,7 +317,7 @@ class SR_Model(nn.Module):
         SRL_output = self.SR_Labeler(pretrain_emb, flag_emb, predicates_1D, seq_len, para=False)
 
         SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
-        SRL_input = SRL_input
+        SRL_input = SRL_input.detach()
         pred_recur = self.SR_Compressor(SRL_input, pretrain_emb, word_id_emb, seq_len, para=False)
 
         output_word = self.SR_Matcher(pred_recur, pretrain_emb, word_id_emb.detach(), seq_len, para=False)
