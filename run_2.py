@@ -378,7 +378,7 @@ if __name__ == '__main__':
         if USE_CUDA:
             srl_model.cuda()
 
-        criterion_word = nn.CrossEntropyLoss(ignore_index=0)
+        criterion_word = nn.CrossEntropyLoss()
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(srl_model.parameters(), lr=learning_rate)
         #optimizer_para = optim.Adam(srl_model.SR_Labeler.parameters(), lr=learning_rate)
@@ -413,8 +413,9 @@ if __name__ == '__main__':
                 target_batch_variable = get_torch_variable_from_np(flat_argument)
 
                 out, out_word = srl_model(train_input_data, lang='En')
+                _,  prediction_batch_variable = torch.max(out, 1)
                 loss = criterion(out, target_batch_variable)
-                loss_word = criterion_word(out_word, target_batch_variable)
+                loss_word = criterion_word(out_word, prediction_batch_variable)
                 if batch_i % 50 == 0:
                     log(batch_i, loss, loss_word)
 
