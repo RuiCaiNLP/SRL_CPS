@@ -133,10 +133,10 @@ class SR_Compressor(nn.Module):
         O_weights = weights_sum - word_weights
         all_weights = torch.cat((word_weights, O_weights), 2)
         # B T 2R -> B T
-        re_weights = self.reProb(all_weights).view(self.batch_size, seq_len, self.target_vocab_size, 1)
+        #re_weights = self.reProb(all_weights).view(self.batch_size, seq_len, self.target_vocab_size, 1)
 
-        #bilstm_output, (_, bilstm_final_state) = self.bilstm_weight(all_weights, self.bilstm_hidden_state)
-        #re_weights = nn.Sigmoid(re_weights)
+        bilstm_output, (_, bilstm_final_state) = self.bilstm_weight(all_weights, self.bilstm_hidden_state)
+        re_weights = nn.Sigmoid(bilstm_output)
         # B R V
         compressor_vector = torch.sum(role_vectors*re_weights, dim=1)
         return compressor_vector
