@@ -97,6 +97,11 @@ class SR_Compressor(nn.Module):
                                                 nn.ReLU(),
                                                 nn.Linear(300, 200))
 
+        self.reProb = nn.Sequential(nn.Linear(self.target_vocab_size*2, self.target_vocab_size),
+                                    nn.ReLU(),
+                                    nn.Linear(self.target_vocab_size, self.target_vocab_size),
+                                    nn.Sigmoid())
+
     def forward(self, SRL_input, pretrained_emb, word_id_emb, seq_len, para=False):
         SRL_input = SRL_input.view(self.batch_size, seq_len, -1)
         compress_input = torch.cat((pretrained_emb, word_id_emb), 2)
@@ -108,11 +113,12 @@ class SR_Compressor(nn.Module):
         word_weights = F.softmax(SRL_input, dim=2).view(self.batch_size, seq_len, self.target_vocab_size)
         # B T R -> B 1 R ->  B T R
         weights_sum = torch.sum(word_weights, dim=1, keepdim=True).expand(self.batch_size, seq_len, self.target_vocab_size)
-        word_weights = word_weights/weights_sum
-        word_weights = word_weights.view(self.batch_size, seq_len, self.target_vocab_size, 1)
-        #word_weights = F.softmax(SRL_input, dim=1).view(self.batch_size, seq_len, self.target_vocab_size, 1)
+        O_weights = weights_sum - word_weights
+        all_weights = torch.cat((word_weights, O_weights), 2)
+        # B T 2R -> B T
+        re_weights = self.reProb(all_weights).view(self.batch_size, seq_len, self.target_vocab_size, 1)
         # B R V
-        compressor_vector = torch.sum(role_vectors*word_weights, dim=1)
+        compressor_vector = torch.sum(role_vectors*re_weights, dim=1)
         return compressor_vector
 
 
