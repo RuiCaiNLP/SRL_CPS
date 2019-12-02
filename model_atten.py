@@ -100,8 +100,8 @@ class SR_Compressor(nn.Module):
 
 
 
-    def forward(self, SRL_input, pretrained_emb, word_id_emb, seq_len, para=False):
-        SRL_input = SRL_input.view(self.batch_size, seq_len, -1)
+    def forward(self, pretrained_emb, word_id_emb, seq_len, para=False):
+        #SRL_input = SRL_input.view(self.batch_size, seq_len, -1)
         compress_input = torch.cat((pretrained_emb, word_id_emb), 2)
         if not para:
             compress_input = self.dropout_word(compress_input)
@@ -251,19 +251,15 @@ class SR_Model(nn.Module):
         seq_len = flag_emb.shape[1]
         SRL_output = self.SR_Labeler(pretrain_emb, flag_emb.detach(), predicates_1D, seq_len, para=True)
 
-        SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
-        pred_recur = self.SR_Compressor(SRL_input.detach(), pretrain_emb, word_id_emb.detach(), seq_len, para=True)
+        pred_recur = self.SR_Compressor(pretrain_emb, word_id_emb.detach(), seq_len, para=True)
 
 
 
         seq_len_fr = flag_emb_fr.shape[1]
         SRL_output_fr = self.SR_Labeler(pretrain_emb_fr, flag_emb_fr.detach(), predicates_1D_fr, seq_len_fr, para=True)
 
-        SRL_input_fr = SRL_output_fr.view(self.batch_size, seq_len_fr, -1)
-        pred_recur_fr = self.SR_Compressor(SRL_input_fr, pretrain_emb_fr, word_id_emb_fr, seq_len_fr, para=True)
+        pred_recur_fr = self.SR_Compressor(pretrain_emb_fr, word_id_emb_fr.detach(), seq_len_fr, para=True)
 
-        #L2_loss_function = nn.MSELoss(size_average=False)
-        #l2_loss = L2_loss_function(pred_recur_fr, pred_recur.detach())/self.batch_size
         """
         En event vector, En word
         """
