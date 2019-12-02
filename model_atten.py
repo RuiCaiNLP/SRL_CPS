@@ -93,55 +93,18 @@ class SR_Compressor(nn.Module):
         self.bilstm_num_layers = model_params['bilstm_num_layers']
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
 
-        self.hidden2vector = nn.Sequential(nn.Linear(self.pretrain_emb_size+self.flag_emb_size, 300),
-                                                nn.ReLU(),
-                                                nn.Linear(300, 200))
+        self.emb2vector = nn.Sequential(nn.Linear(self.pretrain_emb_size+self.flag_emb_size, 300),
+                                           nn.ReLU(),
+                                           nn.Linear(300, 200),
+                                           nn.ReLU())
 
-        self.reProb = nn.Sequential(nn.Linear(self.target_vocab_size*2, self.target_vocab_size),
-                                    nn.ReLU(),
-                                    nn.Linear(self.target_vocab_size, self.target_vocab_size),
-                                    nn.Sigmoid())
 
-        self.bilstm_weight = nn.LSTM(input_size=self.target_vocab_size*2,
-                                    hidden_size=self.target_vocab_size, num_layers=2,
-                                    bidirectional=True,
-                                    bias=True, batch_first=True)
-        self.gatherProb = nn.Linear(self.target_vocab_size*2, self.target_vocab_size)
-
-        if USE_CUDA:
-            self.bilstm_hidden_state = (
-            Variable(torch.randn(2 * 2, self.batch_size, self.target_vocab_size),
-                     requires_grad=True).cuda(),
-            Variable(torch.randn(2 * 2, self.batch_size, self.target_vocab_size),
-                     requires_grad=True).cuda())
-        else:
-            self.bilstm_hidden_state = (
-            Variable(torch.randn(2 * 2, self.batch_size, self.target_vocab_size),
-                     requires_grad=True),
-            Variable(torch.randn(2 * 2, self.batch_size, self.target_vocab_size),
-                     requires_grad=True))
 
     def forward(self, SRL_input, pretrained_emb, word_id_emb, seq_len, para=False):
         SRL_input = SRL_input.view(self.batch_size, seq_len, -1)
         compress_input = torch.cat((pretrained_emb, word_id_emb), 2)
         # B T V
-        role_vectors = self.hidden2vector(compress_input)
-        # B T R V
-        role_vectors = role_vectors.unsqueeze(2).expand(self.batch_size, seq_len, self.target_vocab_size, 200)
-        # B T R
-        word_weights = F.softmax(SRL_input, dim=2).view(self.batch_size, seq_len, self.target_vocab_size).detach()
-        # B T R -> B 1 R ->  B T R
-        weights_sum = torch.sum(word_weights, dim=1, keepdim=True).expand(self.batch_size, seq_len, self.target_vocab_size)
-        O_weights = weights_sum - word_weights
-        all_weights = torch.cat((word_weights, O_weights), 2)
-        # B T 2R -> B T
-        #re_weights = self.reProb(all_weights).view(self.batch_size, seq_len, self.target_vocab_size, 1)
-
-        bilstm_output, (_, bilstm_final_state) = self.bilstm_weight(all_weights, self.bilstm_hidden_state)
-
-        re_weights = F.sigmoid(self.gatherProb(bilstm_output)).view(self.batch_size, seq_len, self.target_vocab_size, 1)
-        # B R V
-        compressor_vector = torch.sum(role_vectors*re_weights, dim=1)
+        compressor_vector = self.emb2vector(compress_input)
         return compressor_vector
 
 
@@ -160,28 +123,28 @@ class SR_Matcher(nn.Module):
 
         self.bilstm_num_layers = model_params['bilstm_num_layers']
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
+        self.emb2vector = nn.Sequential(nn.Linear(self.pretrain_emb_size + self.flag_emb_size, 300),
+                                        nn.ReLU(),
+                                        nn.Linear(300, 200),
+                                        nn.ReLU())
         self.matrix = nn.Parameter(
-                    get_torch_variable_from_np(np.zeros((self.pretrain_emb_size+self.flag_emb_size, 200)).astype("float32")))
+                    get_torch_variable_from_np(np.zeros((200, 200)).astype("float32")))
 
-    def forward(self, role_vectors, pretrained_emb, word_id_emb, seq_len, para=False):
-        query_vector = torch.cat((pretrained_emb, word_id_emb), 2)
-        role_vectors = role_vectors.view(self.batch_size, self.target_vocab_size, 200)
-        # B T R V
-        role_vectors = role_vectors.unsqueeze(1).expand(self.batch_size, seq_len, self.target_vocab_size, 200)
-        # B T R W
-        query_vector = query_vector.unsqueeze(2).expand(self.batch_size, seq_len, self.target_vocab_size,
-                                                        self.pretrain_emb_size+self.flag_emb_size)
-        # B T R V
-        y = torch.mm(query_vector.contiguous().view(self.batch_size*seq_len*self.target_vocab_size, -1), self.matrix)
-        # B T R
-        y = y.contiguous().view(self.batch_size, seq_len, self.target_vocab_size, 200)
-        roles_scores = torch.sum(role_vectors*y, dim=3)
-        zerosNull = get_torch_variable_from_np(np.zeros((self.batch_size, seq_len, 1), dtype='float32'))
-        roles_scores = roles_scores.view(self.batch_size, seq_len, -1)
 
-        output_word = torch.cat((roles_scores[:,:,0:1], zerosNull, roles_scores[:,:,2:]), 2)
-        output_word = output_word.view(self.batch_size * seq_len, -1)
+    def forward(self, memory_vectors,  SRL_probs, pretrained_emb, word_id_emb, seq_len, para=False):
+        query_vector = self.emb2vector(torch.cat((pretrained_emb, word_id_emb), 2)).view(self.batch_size, seq_len, 200)
+        seq_len_origin = memory_vectors.shape[1]
+        SRL_probs = SRL_probs.view(self.batch_size, seq_len_origin, self.target_vocab_size)
+        memory_vectors = memory_vectors.view(self.batch_size*seq_len_origin, 200)
+        y = torch.mm(memory_vectors, self.matrix)
 
+        query_vector = query_vector.transpose(1, 2).contiguous()
+        scores = torch.bmm(y.view(self.batch_size, seq_len_origin, 200), query_vector)
+        scores = scores.transpose(1, 2).contiguous()
+        # B T2 T1
+        scores = F.softmax(scores, 2)
+        # B T2 T1 * B T1 R -> B T2 R
+        output_word = torch.bmm(scores, SRL_probs).view(self.batch_size*seq_len, -1)
         return output_word
 
 
@@ -349,7 +312,7 @@ class SR_Model(nn.Module):
         SRL_input = SRL_input.detach()
         pred_recur = self.SR_Compressor(SRL_input, pretrain_emb, word_id_emb, seq_len, para=False)
 
-        output_word = self.SR_Matcher(pred_recur, pretrain_emb, word_id_emb.detach(), seq_len, para=False)
+        output_word = self.SR_Matcher(pred_recur, SRL_input, pretrain_emb, word_id_emb.detach(), seq_len, para=False)
         return SRL_output, output_word
 
 
