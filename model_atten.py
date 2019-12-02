@@ -80,7 +80,7 @@ class SR_Labeler(nn.Module):
 class SR_Compressor(nn.Module):
     def __init__(self, model_params):
         super(SR_Compressor, self).__init__()
-        self.dropout_word = nn.Dropout(p=0.0)
+        self.dropout_word = nn.Dropout(p=0.3)
         self.dropout_hidden = nn.Dropout(p=0.0)
         self.dropout_mlp = model_params['dropout_mlp']
         self.batch_size = model_params['batch_size']
@@ -103,6 +103,8 @@ class SR_Compressor(nn.Module):
     def forward(self, SRL_input, pretrained_emb, word_id_emb, seq_len, para=False):
         SRL_input = SRL_input.view(self.batch_size, seq_len, -1)
         compress_input = torch.cat((pretrained_emb, word_id_emb), 2)
+        if not para:
+            compress_input = self.dropout_word(compress_input)
         # B T V
         compressor_vector = self.emb2vector(compress_input)
         return compressor_vector
@@ -111,7 +113,7 @@ class SR_Compressor(nn.Module):
 class SR_Matcher(nn.Module):
     def __init__(self, model_params):
         super(SR_Matcher, self).__init__()
-        self.dropout_word = nn.Dropout(p=0.0)
+        self.dropout_word = nn.Dropout(p=0.3)
         self.mlp_size = 300
         self.dropout_mlp = model_params['dropout_mlp']
         self.batch_size = model_params['batch_size']
@@ -132,7 +134,12 @@ class SR_Matcher(nn.Module):
 
 
     def forward(self, memory_vectors,  SRL_probs, pretrained_emb, word_id_emb, seq_len, para=False):
-        query_vector = self.emb2vector(torch.cat((pretrained_emb, word_id_emb), 2)).view(self.batch_size, seq_len, 200)
+        if not para:
+            query_word = self.dropout_word(torch.cat((pretrained_emb, word_id_emb), 2))
+        query_vector = self.emb2vector(query_word).view(self.batch_size, seq_len, 200)
+        if para:
+            query_vector = query_vector.detach()
+
         seq_len_origin = memory_vectors.shape[1]
         SRL_probs = SRL_probs.view(self.batch_size, seq_len_origin, self.target_vocab_size)
         memory_vectors = memory_vectors.view(self.batch_size*seq_len_origin, 200)
@@ -250,18 +257,18 @@ class SR_Model(nn.Module):
         SRL_input_fr = SRL_output_fr.view(self.batch_size, seq_len_fr, -1)
         pred_recur_fr = self.SR_Compressor(SRL_input_fr, pretrain_emb_fr, word_id_emb_fr, seq_len_fr, para=True)
 
-        L2_loss_function = nn.MSELoss(size_average=False)
-        l2_loss = L2_loss_function(pred_recur_fr, pred_recur.detach())/self.batch_size
+        #L2_loss_function = nn.MSELoss(size_average=False)
+        #l2_loss = L2_loss_function(pred_recur_fr, pred_recur.detach())/self.batch_size
         """
         En event vector, En word
         """
-        output_word_en = self.SR_Matcher(pred_recur.detach(), pretrain_emb,  word_id_emb.detach(), seq_len, para=True)
+        output_word_en = self.SR_Matcher(pred_recur.detach(), SRL_output.detach(), pretrain_emb,  word_id_emb.detach(), seq_len, para=True)
 
         #############################################
         """
         Fr event vector, En word
         """
-        output_word_fr = self.SR_Matcher(pred_recur_fr, pretrain_emb, word_id_emb.detach(), seq_len, para=True)
+        output_word_fr = self.SR_Matcher(pred_recur_fr.detach(), SRL_output_fr, pretrain_emb, word_id_emb.detach(), seq_len, para=True)
         unlabeled_loss_function = nn.KLDivLoss(size_average=False)
         output_word_en = F.softmax(output_word_en, dim=1).detach()
         output_word_fr = F.log_softmax(output_word_fr, dim=1)
@@ -270,16 +277,16 @@ class SR_Model(nn.Module):
         """
         En event vector, Fr word
         """
-        output_word_en = self.SR_Matcher(pred_recur.detach(), pretrain_emb_fr, word_id_emb_fr.detach(), seq_len_fr, para=True)
+        output_word_en = self.SR_Matcher(pred_recur.detach(), SRL_output.detach(), pretrain_emb_fr, word_id_emb_fr.detach(), seq_len_fr, para=True)
         """
         Fr event vector, Fr word
         """
-        output_word_fr = self.SR_Matcher(pred_recur_fr, pretrain_emb_fr, word_id_emb_fr.detach(), seq_len_fr, para=True)
+        output_word_fr = self.SR_Matcher(pred_recur_fr.detach(), SRL_output_fr, pretrain_emb_fr, word_id_emb_fr.detach(), seq_len_fr, para=True)
         unlabeled_loss_function = nn.KLDivLoss(size_average=False)
         output_word_en = F.softmax(output_word_en, dim=1).detach()
         output_word_fr = F.log_softmax(output_word_fr, dim=1)
         loss_2 = unlabeled_loss_function(output_word_fr, output_word_en) / (seq_len_fr*self.batch_size)
-        return l2_loss, loss, loss_2
+        return loss, loss_2
 
 
 
