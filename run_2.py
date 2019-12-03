@@ -423,6 +423,7 @@ if __name__ == '__main__':
                 (loss+loss_word).backward()
                 optimizer.step()
 
+                """
                 #batch_size=1
                 try:
                     unlabeled_data_en = unlabeled_Generator_En.next()
@@ -451,7 +452,7 @@ if __name__ == '__main__':
 
                 if batch_i % 50 == 0:
                     log(batch_i, u_loss, u_loss_2)
-
+                """
                 if batch_i > 0 and batch_i % show_steps == 0:
                     srl_model.eval()
                     _, pred = torch.max(out, 1)
