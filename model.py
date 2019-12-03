@@ -118,7 +118,8 @@ class SR_Compressor(nn.Module):
         bilstm_output_word, (_, bilstm_final_state_word) = self.bilstm_layer_word(compress_input,
                                                                                   self.bilstm_hidden_state_word)
         bilstm_output_word = bilstm_output_word.contiguous()
-        pred_recur = bilstm_output_word[np.arange(0, self.batch_size), predicates_1D]
+        #pred_recur = bilstm_output_word[np.arange(0, self.batch_size), predicates_1D]
+        pred_recur = torch.max(bilstm_output_word, dim=1)[0]
         return pred_recur
 
 
@@ -147,10 +148,10 @@ class SR_Matcher(nn.Module):
         combine = torch.cat((pred_recur, pretrained_emb, flag_emb, word_id_emb), 2)
         output_word = self.match_word(combine)
 
-        zerosNull = get_torch_variable_from_np(np.zeros((self.batch_size, seq_len, 1), dtype='float32'))
-        zerosPad = get_torch_variable_from_np(np.zeros((self.batch_size, seq_len, 1), dtype='float32'))
-        zerosPad = torch.add(zerosPad, -1.0)* 10. ** 6.
-        output_word = torch.cat((zerosPad, zerosNull, output_word), 2)
+        #zerosNull = get_torch_variable_from_np(np.zeros((self.batch_size, seq_len, 1), dtype='float32'))
+        #zerosPad = get_torch_variable_from_np(np.zeros((self.batch_size, seq_len, 1), dtype='float32'))
+        #zerosPad = torch.add(zerosPad, -1.0)* 10. ** 6.
+        #output_word = torch.cat((zerosPad, zerosNull, output_word), 2)
         output_word = output_word.view(self.batch_size * seq_len, -1)
 
         return output_word
@@ -260,8 +261,8 @@ class SR_Model(nn.Module):
         pred_recur_fr = self.SR_Compressor(SRL_input_fr, pretrain_emb_fr,
                                         flag_emb_fr.detach(), word_id_emb_fr, predicates_1D_fr, seq_len_fr, para=True)
 
-        L2_loss_function = nn.MSELoss(size_average=False)
-        l2_loss = L2_loss_function(pred_recur_fr, pred_recur.detach())/self.batch_size
+        #L2_loss_function = nn.MSELoss(size_average=False)
+        #l2_loss = L2_loss_function(pred_recur_fr, pred_recur.detach())/self.batch_size
         """
         En event vector, En word
         """
@@ -293,7 +294,7 @@ class SR_Model(nn.Module):
         output_word_en = F.softmax(output_word_en, dim=1).detach()
         output_word_fr = F.log_softmax(output_word_fr, dim=1)
         loss_2 = unlabeled_loss_function(output_word_fr, output_word_en) / (seq_len_fr*self.batch_size)
-        return l2_loss, loss, loss_2
+        return  loss, loss_2
 
 
 
