@@ -150,7 +150,9 @@ class SR_Matcher(nn.Module):
         else:
             y = torch.mm(memory_vectors, self.matrix.detach())
 
+        # B T2 V -> B V T2
         query_vector = query_vector.transpose(1, 2).contiguous()
+        # B T1 v * B v T2 -> B T1 T2
         scores = torch.bmm(y.view(self.batch_size, seq_len_origin, 200), query_vector)
         scores = scores.transpose(1, 2).contiguous()
         # B T2 T1
@@ -318,7 +320,7 @@ class SR_Model(nn.Module):
 
         SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
         SRL_input = SRL_input.detach()
-        pred_recur = self.SR_Compressor(SRL_input, pretrain_emb, word_id_emb, seq_len, para=False)
+        pred_recur = self.SR_Compressor(pretrain_emb, word_id_emb, seq_len, para=False)
 
         output_word = self.SR_Matcher(pred_recur, SRL_input, pretrain_emb, word_id_emb.detach(), seq_len, para=False)
         return SRL_output, output_word
