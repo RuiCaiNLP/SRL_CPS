@@ -140,7 +140,7 @@ class SR_Matcher(nn.Module):
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
         self.match_word = nn.Sequential(nn.Linear(2 * self.bilstm_hidden_size+300+2*self.flag_emb_size, self.mlp_size),
                                         nn.ReLU(),
-                                        nn.Linear(self.mlp_size, self.target_vocab_size-2))
+                                        nn.Linear(self.mlp_size, self.target_vocab_size))
 
     def forward(self, pred_recur, pretrained_emb, flag_emb, word_id_emb, seq_len, para=False):
         pred_recur = pred_recur.view(self.batch_size, self.bilstm_hidden_size * 2)

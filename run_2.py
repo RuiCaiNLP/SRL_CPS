@@ -413,9 +413,9 @@ if __name__ == '__main__':
                 target_batch_variable = get_torch_variable_from_np(flat_argument)
 
                 out, out_word = srl_model(train_input_data, lang='En')
-                _,  prediction_batch_variable = torch.max(out, 1)
+                #_,  prediction_batch_variable = torch.max(out, 1)
                 loss = criterion(out, target_batch_variable)
-                loss_word = criterion_word(out_word, prediction_batch_variable.detach())
+                loss_word = criterion_word(out_word, target_batch_variable)
                 if batch_i % 50 == 0:
                     log(batch_i, loss, loss_word)
 
