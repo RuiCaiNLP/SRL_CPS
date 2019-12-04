@@ -421,7 +421,7 @@ if __name__ == '__main__':
 
                 optimizer.zero_grad()
                 if epoch > 1:
-                    (loss+loss_word).backward()
+                    loss.backwafd()
                 else:
                     (loss + loss_word).backward()
                 optimizer.step()
@@ -445,7 +445,7 @@ if __name__ == '__main__':
                     unlabeled_data_en = unlabeled_Generator_En.next()
                     unlabeled_data_fr = unlabeled_Generator_Fr.next()
 
-                if epoch > 1:
+                if epoch > 3:
                     u_loss_pair, loss_word, = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True)
                     optimizer.zero_grad()
                     u_loss, u_loss_2 = u_loss_pair
