@@ -420,10 +420,7 @@ if __name__ == '__main__':
                     log(batch_i, loss, loss_word)
 
                 optimizer.zero_grad()
-                if epoch <= 1:
-                    loss.backward()
-                else:
-                    (loss + loss_word).backward()
+                (loss + loss_word).backward()
                 optimizer.step()
 
 
@@ -442,10 +439,16 @@ if __name__ == '__main__':
                                                                    lemma2idx, pos2idx, pretrain2idx, fr_pretrain2idx,
                                                                    deprel2idx, argument2idx, idx2word, shuffle=False,
                                                                    lang="Fr")
-                    unlabeled_data_en = unlabeled_Generator_En.next()
-                    unlabeled_data_fr = unlabeled_Generator_Fr.next()
+                unlabeled_data_en = unlabeled_Generator_En.next()
+                unlabeled_data_fr = unlabeled_Generator_Fr.next()
+                self_loss = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=False, self_constrain=True)
+                optimizer.zero_grad()
+                self_loss.backward()
+                optimizer.step()
+                if batch_i % 50 == 0:
+                    log(batch_i, self_loss)
 
-                if epoch > 3:
+                if epoch > 3 and False:
                     u_loss_pair, loss_word, = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True)
                     optimizer.zero_grad()
                     u_loss, u_loss_2 = u_loss_pair
