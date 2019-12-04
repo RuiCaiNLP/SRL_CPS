@@ -420,7 +420,10 @@ if __name__ == '__main__':
                     log(batch_i, loss, loss_word)
 
                 optimizer.zero_grad()
-                (loss+loss_word).backward()
+                if epoch > 1:
+                    (loss+loss_word).backward()
+                else:
+                    (loss + loss_word).backward()
                 optimizer.step()
 
 
@@ -442,16 +445,16 @@ if __name__ == '__main__':
                     unlabeled_data_en = unlabeled_Generator_En.next()
                     unlabeled_data_fr = unlabeled_Generator_Fr.next()
 
+                if epoch > 1:
+                    u_loss_pair, loss_word, = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True)
+                    optimizer.zero_grad()
+                    u_loss, u_loss_2 = u_loss_pair
+                    (u_loss + u_loss_2).backward()
+                    optimizer.step()
+                    batch_size = 30
 
-                u_loss_pair, loss_word, = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True)
-                optimizer.zero_grad()
-                u_loss, u_loss_2 = u_loss_pair
-                (u_loss + u_loss_2).backward()
-                optimizer.step()
-                batch_size = 30
-
-                if batch_i % 50 == 0:
-                    log(batch_i, u_loss, u_loss_2)
+                    if batch_i % 50 == 0:
+                        log(batch_i, u_loss, u_loss_2)
 
                 if batch_i > 0 and batch_i % show_steps == 0:
                     srl_model.eval()
