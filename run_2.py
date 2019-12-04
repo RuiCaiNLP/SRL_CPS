@@ -421,7 +421,7 @@ if __name__ == '__main__':
 
                 optimizer.zero_grad()
                 if epoch <= 1:
-                    loss.backwafd()
+                    loss.backward()
                 else:
                     (loss + loss_word).backward()
                 optimizer.step()
