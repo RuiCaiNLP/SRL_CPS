@@ -420,7 +420,7 @@ if __name__ == '__main__':
                     log(batch_i, loss, loss_word)
 
                 optimizer.zero_grad()
-                if epoch > 1:
+                if epoch <= 1:
                     loss.backwafd()
                 else:
                     (loss + loss_word).backward()
