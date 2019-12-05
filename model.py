@@ -296,6 +296,36 @@ class SR_Model(nn.Module):
         loss_2 = unlabeled_loss_function(output_word_fr, output_word_en) / (seq_len_fr*self.batch_size)
         return  loss, loss_2
 
+    def self_train_hidden(self, batch_input):
+        unlabeled_data_en, unlabeled_data_fr = batch_input
+
+        pretrain_batch_fr = get_torch_variable_from_np(unlabeled_data_fr['pretrain'])
+        predicates_1D_fr = unlabeled_data_fr['predicates_idx']
+        flag_batch_fr = get_torch_variable_from_np(unlabeled_data_fr['flag'])
+        flag_emb_fr = self.flag_embedding(flag_batch_fr).detach()
+        pretrain_emb_fr = self.fr_pretrained_embedding(pretrain_batch_fr).detach()
+
+        pretrain_batch = get_torch_variable_from_np(unlabeled_data_en['pretrain'])
+        predicates_1D = unlabeled_data_en['predicates_idx']
+        flag_batch = get_torch_variable_from_np(unlabeled_data_en['flag'])
+        flag_emb = self.flag_embedding(flag_batch)
+        seq_len = flag_emb.shape[1]
+        pretrain_emb = self.pretrained_embedding(pretrain_batch).detach()
+
+        SRL_output = self.SR_Labeler(pretrain_emb, flag_emb.detach(), predicates_1D, seq_len, para=True).view(self.batch_size, seq_len, -1)
+        SRL_input = F.softmax(SRL_output, 2)
+        # B R
+        max_role_en = torch.max(SRL_input, dim=1)[0].detach()
+
+        seq_len_fr = flag_emb_fr.shape[1]
+        SRL_output_fr = self.SR_Labeler(pretrain_emb_fr, flag_emb_fr.detach(), predicates_1D_fr, seq_len_fr, para=True).view(self.batch_size, seq_len, -1)
+        SRL_input_fr = F.softmax(SRL_output_fr, 2)
+        # B R
+        max_role_fr = torch.max(SRL_input_fr, dim=1)[0].detach()
+        criterion = nn.MSELoss(size_average=False)
+        loss = criterion(max_role_fr, max_role_en) / self.batch_size
+        return loss
+
     def self_train(self, batch_input):
         unlabeled_data_en, unlabeled_data_fr = batch_input
 
@@ -332,6 +362,7 @@ class SR_Model(nn.Module):
                                          seq_len,
                                          para=True)
         output_word_en = output_word_en.view(self.batch_size, seq_len, self.target_vocab_size)
+
         output_word_en = F.softmax(output_word_en, 2)
         # B R
         max_role_en = torch.max(output_word_en, dim=1)[0].detach()
@@ -365,7 +396,7 @@ class SR_Model(nn.Module):
             return loss, loss_word
         if self_constrain:
 
-            loss = self.self_train(batch_input)
+            loss = self.self_train_hidden(batch_input)
 
             return loss
 
