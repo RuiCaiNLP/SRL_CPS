@@ -441,13 +441,13 @@ if __name__ == '__main__':
                                                                    lang="Fr")
                     unlabeled_data_en = unlabeled_Generator_En.next()
                     unlabeled_data_fr = unlabeled_Generator_Fr.next()
-
-                self_loss = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=False, self_constrain=True)
-                optimizer.zero_grad()
-                self_loss.backward()
-                optimizer.step()
-                if batch_i % 50 == 0:
-                    log(batch_i, self_loss)
+                if epoch>1:
+                    self_loss = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=False, self_constrain=True)
+                    optimizer.zero_grad()
+                    self_loss.backward()
+                    optimizer.step()
+                    if batch_i % 50 == 0:
+                        log(batch_i, self_loss)
 
                 if epoch > 3 and False:
                     u_loss_pair, loss_word, = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True)
