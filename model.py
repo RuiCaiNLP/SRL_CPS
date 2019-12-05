@@ -318,7 +318,7 @@ class SR_Model(nn.Module):
         max_role_en = torch.max(SRL_input, dim=1)[0].detach()
 
         seq_len_fr = flag_emb_fr.shape[1]
-        SRL_output_fr = self.SR_Labeler(pretrain_emb_fr, flag_emb_fr.detach(), predicates_1D_fr, seq_len_fr, para=True).view(self.batch_size, seq_len, -1)
+        SRL_output_fr = self.SR_Labeler(pretrain_emb_fr, flag_emb_fr.detach(), predicates_1D_fr, seq_len_fr, para=True).view(self.batch_size, seq_len_fr, -1)
         SRL_input_fr = F.softmax(SRL_output_fr, 2)
         # B R
         max_role_fr = torch.max(SRL_input_fr, dim=1)[0].detach()
