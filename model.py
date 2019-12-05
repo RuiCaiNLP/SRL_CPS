@@ -396,7 +396,7 @@ class SR_Model(nn.Module):
             return loss, loss_word
         if self_constrain:
 
-            loss = self.self_train_hidden(batch_input)
+            loss = self.self_train(batch_input)
 
             return loss
 
