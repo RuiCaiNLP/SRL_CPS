@@ -108,7 +108,7 @@ class SR_Compressor(nn.Module):
 
 
         self.bilstm_layer_word = nn.LSTM(input_size=300+self.target_vocab_size+2*self.flag_emb_size,
-                                    hidden_size=self.bilstm_hidden_size, num_layers=2,
+                                    hidden_size=self.batch_size*10, num_layers=2,
                                     bidirectional=True,
                                     bias=True, batch_first=True)
 
@@ -138,23 +138,35 @@ class SR_Matcher(nn.Module):
 
         self.bilstm_num_layers = model_params['bilstm_num_layers']
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
+        self.compress_word = nn.Sequential(nn.Linear(300+2*self.flag_emb_size, 20), nn.ReLU())
+        self.scorer = nn.Sequential(nn.Linear(40, 20),
+                                    nn.ReLU(),
+                                    nn.Linear(20, 1))
         self.match_word = nn.Sequential(nn.Linear(2 * self.bilstm_hidden_size+300+2*self.flag_emb_size, self.mlp_size),
                                         nn.ReLU(),
                                         nn.Linear(self.mlp_size, self.target_vocab_size))
 
+
     def forward(self, pred_recur, pretrained_emb, flag_emb, word_id_emb, seq_len, para=False):
+        """
         pred_recur = pred_recur.view(self.batch_size, self.bilstm_hidden_size * 2)
         pred_recur = pred_recur.unsqueeze(1).expand(self.batch_size, seq_len, self.bilstm_hidden_size * 2)
         combine = torch.cat((pred_recur, pretrained_emb, flag_emb, word_id_emb), 2)
         output_word = self.match_word(combine)
-
-        #zerosNull = get_torch_variable_from_np(np.zeros((self.batch_size, seq_len, 1), dtype='float32'))
-        #zerosPad = get_torch_variable_from_np(np.zeros((self.batch_size, seq_len, 1), dtype='float32'))
-        #zerosPad = torch.add(zerosPad, -1.0)* 10. ** 6.
-        #output_word = torch.cat((zerosPad, zerosNull, output_word), 2)
         output_word = output_word.view(self.batch_size * seq_len, -1)
+        """
 
-        return output_word
+        forward_hidden = pred_recur[:, :, :self.target_vocab_size * 10].view(self.batch_size, self.target_vocab_size,
+                                                                             10)
+        backward_hidden = pred_recur[:, :, self.target_vocab_size * 10:].view(self.batch_size, self.target_vocab_size,
+                                                                              10)
+        role_hidden = torch.cat((forward_hidden, backward_hidden), 2)
+        role_hidden = role_hidden.unsqueeze(1).expand(self.batch_size, seq_len, self.target_vocab_size, 20)
+        combine = self.compress_word(torch.cat((pretrained_emb, flag_emb, word_id_emb), 2))
+        combine = combine.expand(self.batch_size, seq_len, self.target_vocab_size, 20)
+        scores = self.scorer(torch.cat((role_hidden, combine), 3)).view(self.batch_size*seq_len, self.target_vocab_size)
+
+        return scores
 
 
 

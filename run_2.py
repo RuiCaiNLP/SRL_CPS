@@ -441,7 +441,7 @@ if __name__ == '__main__':
                                                                    lang="Fr")
                     unlabeled_data_en = unlabeled_Generator_En.next()
                     unlabeled_data_fr = unlabeled_Generator_Fr.next()
-                if epoch>1:
+                if epoch>1 and False:
                     self_loss = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=False, self_constrain=True)
                     optimizer.zero_grad()
                     self_loss.backward()
@@ -449,16 +449,16 @@ if __name__ == '__main__':
                     if batch_i % 50 == 0:
                         log(batch_i, self_loss)
 
-                if epoch > 3 and False:
-                    u_loss_pair, loss_word, = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True)
-                    optimizer.zero_grad()
-                    u_loss, u_loss_2 = u_loss_pair
-                    (u_loss + u_loss_2).backward()
-                    optimizer.step()
-                    batch_size = 30
 
-                    if batch_i % 50 == 0:
-                        log(batch_i, u_loss, u_loss_2)
+                u_loss_pair, loss_word, = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True)
+                optimizer.zero_grad()
+                u_loss, u_loss_2 = u_loss_pair
+                (u_loss + u_loss_2).backward()
+                optimizer.step()
+                batch_size = 30
+
+                if batch_i % 50 == 0:
+                    log(batch_i, u_loss, u_loss_2)
 
                 if batch_i > 0 and batch_i % show_steps == 0:
                     srl_model.eval()
