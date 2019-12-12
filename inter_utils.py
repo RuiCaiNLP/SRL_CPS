@@ -4,6 +4,7 @@ import math
 import numpy as np
 import random
 import sys
+from transformers import *
 
 def log(*args, **kwargs):
     print(*args,file=sys.stderr, **kwargs)
@@ -14,13 +15,75 @@ def pad_batch(batch_data, batch_size, pad_int):
     max_length = max([len(item) for item in batch_data])
     return [item + [pad_int]*(max_length-len(item)) for item in batch_data]
 
+def convert_example_to_features(tokens, tokenizer):
+    """Loads a data file into a list of `InputBatch`s."""
+
+    # The convention in BERT is:
+    # (a) For sequence pairs:
+    #  tokens:   [CLS] is this jack ##son ##ville ? [SEP] no it is not . [SEP]
+    #  type_ids:   0   0  0    0    0     0      0   0    1  1  1   1  1   1
+    # (b) For single sequences:
+    #  tokens:   [CLS] the dog is hairy . [SEP]
+    #  type_ids:   0   0   0   0  0     0   0
+    #
+    # Where "type_ids" are used to indicate whether this is the first
+    # sequence or the second sequence. The embedding vectors for `type=0` and
+    # `type=1` were learned during pre-training and are added to the wordpiece
+    # embedding vector (and position vector). This is not *strictly* necessary
+    # since the [SEP] token unambigiously separates the sequences, but it makes
+    # it easier for the model to learn the concept of sequences.
+    #
+    # For classification tasks, the first vector (corresponding to [CLS]) is
+    # used as as the "sentence vector". Note that this only makes sense because
+    # the entire model is fine-tuned.
+
+    def convert_tokens_to_ids(tokens):
+        """Converts a sequence of tokens into ids using the vocab."""
+        ids = []
+        for token in tokens:
+            ids.append(tokenizer.vocab.get(token, tokenizer.vocab['[UNK]']))
+
+            #ids.append(tokenizer.vocab[token])
+        return ids
+
+    assert isinstance(tokens, list)
+
+    input_tokens = tokens
+    val_pos = []
+    end_idx = 0
+    #for word in tokens:
+    ##    input_tokens.extend(b_token)
+     #   val_pos.append(end_idx)
+     #   end_idx += len(b_token)
+
+    input_tokens = ["[CLS]"] + input_tokens + ["[SEP]"]
+    # input_ids = tokenizer.convert_tokens_to_ids(tokens)
+    input_ids = convert_tokens_to_ids(input_tokens)
+
+    assert len(input_ids) == len(input_tokens)
+    assert max(input_ids) < len(tokenizer.vocab)
+
+    # The mask has 1 for real tokens and 0 for padding tokens. Only real
+    # tokens are attended to.
+    input_mask = [1] * len(input_ids)
+
+    return {
+        'input_len': len(tokens),
+        'input_tokens': input_tokens,
+        'input_ids': input_ids,
+        'input_mask': input_mask,
+        'out_positions': val_pos
+    }
+
 
 ## need for input: word, is_Predicate
 def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx, pretrain2idx, fr_pretrain2idx,
-              deprel2idx, argument2idx, idx2word, shuffle=False, lang="En"):
+              deprel2idx, argument2idx, idx2word, shuffle=False, lang="En", use_bert=False):
 
 
     role_number = len(argument2idx)
+    if use_bert:
+        tokenizer = BertTokenizer.from_pretrained('bert-base-multilingual-cased', do_lower_case=False)
     if shuffle:
         random.shuffle(input_data)
 
@@ -73,13 +136,28 @@ def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx,
             word_batch = [[fr_word2idx.get(item[6], fr_word2idx[_UNK_]) for item in sentence] for sentence in data_batch]
             pad_word_batch = np.array(pad_batch(word_batch, batch_size, fr_word2idx[_PAD_]))
 
+        if use_bert:
+            bert_inst_batch = [convert_example_to_features(sen, tokenizer) for sen in text_batch ]
+            #bert_max_length = max([len(inst['input_ids']) for inst in bert_inst_batch])
+            bert_max_length = len(pad_word_batch[0])+2
+            bert_inputs_ids = np.zeros([batch_size, bert_max_length], dtype=np.int64)
+            bert_input_mask = np.zeros([batch_size, bert_max_length], dtype=np.int64)
+            for i in range(batch_size):
+                berts = bert_inst_batch[i]
+                bert_inputs_ids[i, :len(berts['input_ids'])] = berts['input_ids']
+                bert_input_mask[i, :len(berts['input_mask'])] = berts['input_mask']
+        else:
+            bert_inputs_ids = None
+            bert_input_mask = None
+
+
         word_times_batch = []
         for sentence in data_batch:
             word_dict = dict()
             word_times = []
             for item in sentence:
                 word = item[6]
-                if word_dict.has_key(word):
+                if word in word_dict:
                     word_dict[word] +=1
                     word_times.append(word_dict[word])
                 else:
@@ -157,6 +235,8 @@ def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx,
             #'sep_dep_link': sep_pad_gold_link_batch,
             'role_index': role_index_batch,
             'role_mask': role_mask_batch,
+            'bert_input_ids': bert_inputs_ids,
+            'bert_input_mask': bert_input_mask
         }
 
         yield batch

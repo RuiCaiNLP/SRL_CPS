@@ -3,10 +3,11 @@ import numpy as np
 import torch
 from torch import nn
 import sys
-from torch.autograd import Variable
+#from torch.autograd import Variable
 import torch.nn.functional as F
+from transformers import *
 
-from utils import USE_CUDA
+#from utils import USE_CUDA
 from utils import get_torch_variable_from_np, get_data
 from utils import bilinear
 
@@ -31,22 +32,19 @@ class SR_Labeler(nn.Module):
         self.bilstm_num_layers = model_params['bilstm_num_layers']
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
 
-        if USE_CUDA:
-            self.bilstm_hidden_state = (
-            Variable(torch.randn(2 * self.bilstm_num_layers, self.batch_size, self.bilstm_hidden_size),
-                     requires_grad=True).cuda(),
-            Variable(torch.randn(2 * self.bilstm_num_layers, self.batch_size, self.bilstm_hidden_size),
-                     requires_grad=True).cuda())
-        else:
-            self.bilstm_hidden_state = (
-            Variable(torch.randn(2 * self.bilstm_num_layers, self.batch_size, self.bilstm_hidden_size),
-                     requires_grad=True),
-            Variable(torch.randn(2 * self.bilstm_num_layers, self.batch_size, self.bilstm_hidden_size),
-                     requires_grad=True))
+        self.bilstm_hidden_state = (
+            torch.zeros(2 * self.bilstm_num_layers, self.batch_size, self.bilstm_hidden_size).to(device),
+            torch.zeros(2 * self.bilstm_num_layers, self.batch_size, self.bilstm_hidden_size).to(device))
+
         self.bilstm_layer = nn.LSTM(input_size=300 + 1 * self.flag_emb_size,
                                     hidden_size=self.bilstm_hidden_size, num_layers=self.bilstm_num_layers,
                                     bidirectional=True,
                                     bias=True, batch_first=True)
+
+        self.bilstm_bert = nn.LSTM(input_size=768 + self.flag_emb_size,
+                                   hidden_size=self.bilstm_hidden_size, num_layers=self.bilstm_num_layers,
+                                   bidirectional=True,
+                                   bias=True, batch_first=True)
 
 
         self.mlp_size = 300
@@ -57,12 +55,18 @@ class SR_Labeler(nn.Module):
         self.mlp_arg = nn.Sequential(nn.Linear(2 * self.bilstm_hidden_size, self.mlp_size), nn.ReLU())
         self.mlp_pred = nn.Sequential(nn.Linear(2 * self.bilstm_hidden_size, self.mlp_size), nn.ReLU())
 
-    def forward(self, pretrained_emb, flag_emb, predicates_1D, seq_len, para=False):
+    def forward(self, pretrained_emb, flag_emb, predicates_1D, seq_len, use_bert=False, para=False):
+        self.bilstm_hidden_state = (
+            torch.zeros(2 * self.bilstm_num_layers, self.batch_size, self.bilstm_hidden_size).to(device),
+            torch.zeros(2 * self.bilstm_num_layers, self.batch_size, self.bilstm_hidden_size).to(device))
+
         input_emb = torch.cat((pretrained_emb, flag_emb), 2)
         if para == False:
             input_emb = self.dropout_word(input_emb)
-
-        bilstm_output, (_, bilstm_final_state) = self.bilstm_layer(input_emb, self.bilstm_hidden_state)
+        if not use_bert:
+            bilstm_output, (_, bilstm_final_state) = self.bilstm_layer(input_emb, self.bilstm_hidden_state)
+        else:
+            bilstm_output, (_, bilstm_final_state) = self.bilstm_bert(input_emb, self.bilstm_hidden_state)
         bilstm_output = bilstm_output.contiguous()
         hidden_input = bilstm_output.view(bilstm_output.shape[0] * bilstm_output.shape[1], -1)
         hidden_input = hidden_input.view(self.batch_size, seq_len, -1)
@@ -93,18 +97,14 @@ class SR_Compressor(nn.Module):
         self.bilstm_num_layers = model_params['bilstm_num_layers']
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
 
-        if USE_CUDA:
-            self.bilstm_hidden_state_word = (
-            Variable(torch.randn(2 * 2, self.batch_size, self.target_vocab_size*10),
-                     requires_grad=True).cuda(),
-            Variable(torch.randn(2 * 2, self.batch_size, self.target_vocab_size*10),
-                     requires_grad=True).cuda())
-        else:
-            self.bilstm_hidden_state_word = (
-            Variable(torch.randn(2 * 2, self.batch_size, self.target_vocab_size*10),
-                     requires_grad=True),
-            Variable(torch.randn(2 * 2, self.batch_size, self.target_vocab_size*10),
-                     requires_grad=True))
+
+        self.bilstm_hidden_state_word = (
+             torch.zeros(2 * 2, self.batch_size, self.target_vocab_size*10).to(device),
+             torch.zeros(2 * 2, self.batch_size, self.target_vocab_size*10).to(device))
+
+        self.bilstm_hidden_state_bert = (
+            torch.zeros(2 * 2, self.batch_size, self.target_vocab_size * 10).to(device),
+            torch.zeros(2 * 2, self.batch_size, self.target_vocab_size * 10).to(device))
 
 
         self.bilstm_layer_word = nn.LSTM(input_size=300+self.target_vocab_size+2*self.flag_emb_size,
@@ -112,14 +112,32 @@ class SR_Compressor(nn.Module):
                                     bidirectional=True,
                                     bias=True, batch_first=True)
 
-    def forward(self, SRL_input, pretrained_emb, flag_emb, word_id_emb, predicates_1D, seq_len, para=False):
+        self.bilstm_layer_bert = nn.LSTM(input_size=768 + self.target_vocab_size + self.flag_emb_size,
+                                         hidden_size=self.target_vocab_size * 10, num_layers=2,
+                                         bidirectional=True,
+                                         bias=True, batch_first=True)
+
+    def forward(self, SRL_input, word_emb, flag_emb, word_id_emb, predicates_1D, seq_len, use_bert=False, para=False):
+        self.bilstm_hidden_state_word = (
+            torch.zeros(2 * 2, self.batch_size, self.target_vocab_size * 10).to(device),
+            torch.zeros(2 * 2, self.batch_size, self.target_vocab_size * 10).to(device))
+
+        self.bilstm_hidden_state_bert = (
+            torch.zeros(2 * 2, self.batch_size, self.target_vocab_size * 10).to(device),
+            torch.zeros(2 * 2, self.batch_size, self.target_vocab_size * 10).to(device))
+
         SRL_input = SRL_input.view(self.batch_size, seq_len, -1)
-        compress_input = torch.cat((pretrained_emb, flag_emb, word_id_emb, SRL_input), 2)
-        bilstm_output_word, (_, bilstm_final_state_word) = self.bilstm_layer_word(compress_input,
-                                                                                  self.bilstm_hidden_state_word)
-        bilstm_output_word = bilstm_output_word.contiguous()
-        #pred_recur = bilstm_output_word[np.arange(0, self.batch_size), predicates_1D]
-        pred_recur = torch.max(bilstm_output_word, dim=1)[0]
+        if not use_bert:
+            compress_input = torch.cat((word_emb, flag_emb, word_id_emb, SRL_input), 2)
+            bilstm_output_word, (_, bilstm_final_state_word) = self.bilstm_layer_word(compress_input,
+                                                                                      self.bilstm_hidden_state_word)
+            bilstm_output = bilstm_output_word.contiguous()
+        else:
+            compress_input = torch.cat((word_emb, flag_emb, SRL_input), 2)
+            bilstm_output_bert, (_, bilstm_final_state_bert) = self.bilstm_layer_bert(compress_input,
+                                                                                      self.bilstm_hidden_state_bert)
+            bilstm_output = bilstm_output_bert.contiguous()
+        pred_recur = torch.max(bilstm_output, dim=1)[0]
         return pred_recur
 
 
@@ -139,6 +157,7 @@ class SR_Matcher(nn.Module):
         self.bilstm_num_layers = model_params['bilstm_num_layers']
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
         self.compress_word = nn.Sequential(nn.Linear(300+2*self.flag_emb_size, 20), nn.ReLU())
+        self.compress_bert = nn.Sequential(nn.Linear(768, 20), nn.ReLU())
         self.scorer = nn.Sequential(nn.Linear(40, 20),
                                     nn.ReLU(),
                                     nn.Linear(20, 1))
@@ -147,7 +166,7 @@ class SR_Matcher(nn.Module):
                                         nn.Linear(self.mlp_size, self.target_vocab_size))
 
 
-    def forward(self, pred_recur, pretrained_emb, flag_emb, word_id_emb, seq_len, para=False):
+    def forward(self, pred_recur, pretrained_emb, flag_emb, word_id_emb, seq_len, use_bert=False, para=False):
         """
         pred_recur = pred_recur.view(self.batch_size, self.bilstm_hidden_size * 2)
         pred_recur = pred_recur.unsqueeze(1).expand(self.batch_size, seq_len, self.bilstm_hidden_size * 2)
@@ -162,7 +181,10 @@ class SR_Matcher(nn.Module):
                                                                               10)
         role_hidden = torch.cat((forward_hidden, backward_hidden), 2)
         role_hidden = role_hidden.unsqueeze(1).expand(self.batch_size, seq_len, self.target_vocab_size, 20)
-        combine = self.compress_word(torch.cat((pretrained_emb, flag_emb, word_id_emb), 2))
+        if not use_bert:
+            combine = self.compress_word(torch.cat((pretrained_emb, flag_emb, word_id_emb), 2))
+        else:
+            combine = self.compress_bert(pretrained_emb)
         combine = combine.unsqueeze(2).expand(self.batch_size, seq_len, self.target_vocab_size, 20)
         scores = self.scorer(torch.cat((role_hidden, combine), 3)).view(self.batch_size*seq_len, self.target_vocab_size)
 
@@ -233,6 +255,8 @@ class SR_Model(nn.Module):
         self.SR_Labeler = SR_Labeler(model_params)
         self.SR_Compressor = SR_Compressor(model_params)
         self.SR_Matcher = SR_Matcher(model_params)
+        self.model = BertModel.from_pretrained('bert-base-multilingual-cased')
+        self.model.eval()
 
 
 
@@ -398,7 +422,7 @@ class SR_Model(nn.Module):
 
 
 
-    def forward(self, batch_input, lang='En', unlabeled=False, self_constrain=False):
+    def forward(self, batch_input, lang='En', unlabeled=False, self_constrain=False, use_bert=False):
         if unlabeled:
 
             loss = self.parallel_train(batch_input)
@@ -418,22 +442,41 @@ class SR_Model(nn.Module):
         word_id = get_torch_variable_from_np(batch_input['word_times'])
         word_id_emb = self.id_embedding(word_id)
         flag_emb = self.flag_embedding(flag_batch)
+        if use_bert:
+            bert_input_ids = get_torch_variable_from_np(batch_input['bert_input_ids'])
+            bert_input_mask = get_torch_variable_from_np(batch_input['bert_input_mask'])
+            bert_emb = self.model(bert_input_ids, attention_mask=bert_input_mask)
+            bert_emb = bert_emb[0]
+            bert_emb = bert_emb[:, 1:-1, :].contiguous().detach()
 
         if lang == "En":
             pretrain_emb = self.pretrained_embedding(pretrain_batch).detach()
         else:
             pretrain_emb = self.fr_pretrained_embedding(pretrain_batch).detach()
 
+
         seq_len = flag_emb.shape[1]
-        SRL_output = self.SR_Labeler(pretrain_emb, flag_emb, predicates_1D, seq_len, para=False)
+        if not use_bert:
+            SRL_output = self.SR_Labeler(pretrain_emb, flag_emb, predicates_1D, seq_len, para=False)
 
 
-        SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
-        SRL_input = SRL_input
-        pred_recur = self.SR_Compressor(SRL_input, pretrain_emb,
-                                        flag_emb.detach(), word_id_emb, predicates_1D, seq_len, para=False)
+            SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
+            SRL_input = SRL_input
+            pred_recur = self.SR_Compressor(SRL_input, pretrain_emb,
+                                            flag_emb.detach(), word_id_emb, predicates_1D, seq_len, para=False)
 
-        output_word = self.SR_Matcher(pred_recur, pretrain_emb, flag_emb.detach(), word_id_emb.detach(), seq_len, para=False)
+            output_word = self.SR_Matcher(pred_recur, pretrain_emb, flag_emb.detach(), word_id_emb.detach(), seq_len, para=False)
+        else:
+            SRL_output = self.SR_Labeler(bert_emb, flag_emb, predicates_1D, seq_len, para=False, use_bert=True)
+
+            SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
+            SRL_input = SRL_input
+            pred_recur = self.SR_Compressor(SRL_input, bert_emb,
+                                            flag_emb.detach(), word_id_emb, predicates_1D, seq_len, para=False,use_bert=True)
+
+            output_word = self.SR_Matcher(pred_recur, bert_emb, flag_emb.detach(), word_id_emb.detach(), seq_len,
+                                          para=False, use_bert=True)
+
         return SRL_output, output_word
 
 

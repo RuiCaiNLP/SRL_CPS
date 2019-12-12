@@ -147,6 +147,9 @@ def make_parser():
     parser.add_argument('--elmo_weight', type=str,
                         help='ELMo weight file')
 
+    parser.add_argument('--use_bert', action='store_true',
+                        help='[USE] BERT embedding')
+
     parser.add_argument('--clip', type=float, default=5,
                         help='gradient clipping')
 
@@ -170,6 +173,7 @@ if __name__ == '__main__':
     dev_file = args.valid_data
     train_file_fr = args.train_data_fr
     dev_file_fr = args.valid_data_fr
+    use_bert = args.use_bert
 
     # do preprocessing
     if args.preprocess:
@@ -363,6 +367,7 @@ if __name__ == '__main__':
             "use_flag_embedding": use_flag_embedding,
             "flag_embedding_size": flag_embedding_size,
             'use_elmo': use_elmo,
+            "use_bert": use_bert,
             "elmo_embedding_size": elmo_embedding_size,
             "elmo_options_file": elmo_options_file,
             "elmo_weight_file": elmo_weight_file,
@@ -395,11 +400,11 @@ if __name__ == '__main__':
         unlabeled_Generator_En = inter_utils.get_batch(unlabeled_dataset_en, batch_size, word2idx, fr_word2idx,
                                                        lemma2idx, pos2idx, pretrain2idx, fr_pretrain2idx,
                                                        deprel2idx, argument2idx, idx2word, shuffle=False,
-                                                       lang="En")
+                                                       lang="En", use_bert=True)
         unlabeled_Generator_Fr = inter_utils.get_batch(unlabeled_dataset_fr, batch_size, word2idx, fr_word2idx,
                                                        lemma2idx, pos2idx, pretrain2idx, fr_pretrain2idx,
                                                        deprel2idx, argument2idx, idx2word, shuffle=False,
-                                                       lang="Fr")
+                                                       lang="Fr", use_bert=True)
 
         for epoch in range(30):
 
@@ -407,12 +412,12 @@ if __name__ == '__main__':
                     inter_utils.get_batch(train_dataset, batch_size, word2idx, fr_word2idx,
                                           lemma2idx, pos2idx, pretrain2idx, fr_pretrain2idx,
                                           deprel2idx, argument2idx, idx2word, shuffle=True,
-                                          lang='En')):
+                                          lang='En', use_bert=True)):
                 srl_model.train()
                 flat_argument = train_input_data['flat_argument']
                 target_batch_variable = get_torch_variable_from_np(flat_argument)
 
-                out, out_word = srl_model(train_input_data, lang='En')
+                out, out_word = srl_model(train_input_data, lang='En', use_bert=True)
                 #_,  prediction_batch_variable = torch.max(out, 1)
                 loss = criterion(out, target_batch_variable)
                 loss_word = criterion_word(out_word, target_batch_variable)
@@ -426,8 +431,8 @@ if __name__ == '__main__':
 
                 #batch_size=1
                 try:
-                    unlabeled_data_en = unlabeled_Generator_En.next()
-                    unlabeled_data_fr = unlabeled_Generator_Fr.next()
+                    unlabeled_data_en = next(unlabeled_Generator_En)
+                    unlabeled_data_fr = next(unlabeled_Generator_Fr)
                 except StopIteration:
                     unlabeled_Generator_En = inter_utils.get_batch(unlabeled_dataset_en, batch_size, word2idx,
                                                                    fr_word2idx,
@@ -439,26 +444,22 @@ if __name__ == '__main__':
                                                                    lemma2idx, pos2idx, pretrain2idx, fr_pretrain2idx,
                                                                    deprel2idx, argument2idx, idx2word, shuffle=False,
                                                                    lang="Fr")
-                    unlabeled_data_en = unlabeled_Generator_En.next()
-                    unlabeled_data_fr = unlabeled_Generator_Fr.next()
-                if epoch>1 and False:
-                    self_loss = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=False, self_constrain=True)
+                    unlabeled_data_en = next(unlabeled_Generator_En)
+                    unlabeled_data_fr = next(unlabeled_Generator_Fr)
+
+
+
+                if False:
+                    u_loss_pair, loss_word, = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True,
+                                                        self_constrain=False, use_bert=True)
                     optimizer.zero_grad()
-                    self_loss.backward()
+                    u_loss, u_loss_2 = u_loss_pair
+                    (u_loss + u_loss_2).backward()
                     optimizer.step()
+                    batch_size = 30
+
                     if batch_i % 50 == 0:
-                        log(batch_i, self_loss)
-
-
-                u_loss_pair, loss_word, = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True)
-                optimizer.zero_grad()
-                u_loss, u_loss_2 = u_loss_pair
-                (u_loss + u_loss_2).backward()
-                optimizer.step()
-                batch_size = 30
-
-                if batch_i % 50 == 0:
-                    log(batch_i, u_loss, u_loss_2)
+                        log(batch_i, u_loss, u_loss_2)
 
                 if batch_i > 0 and batch_i % show_steps == 0:
                     srl_model.eval()
@@ -477,7 +478,7 @@ if __name__ == '__main__':
                                                   pos2idx, pretrain2idx, fr_pretrain2idx, deprel2idx, argument2idx,
                                                   idx2argument, idx2word,
                                                   False,
-                                                  dev_predicate_correct, dev_predicate_sum, lang='Fr')
+                                                  dev_predicate_correct, dev_predicate_sum, lang='Fr', use_bert=True)
                     log('En test:')
                     eval_data(srl_model, elmo, dev_dataset, batch_size, word2idx,
                               fr_word2idx,
@@ -485,7 +486,7 @@ if __name__ == '__main__':
                               pos2idx, pretrain2idx, fr_pretrain2idx, deprel2idx, argument2idx,
                               idx2argument, idx2word,
                               False,
-                              dev_predicate_correct, dev_predicate_sum, lang='En')
+                              dev_predicate_correct, dev_predicate_sum, lang='En', use_bert=True)
 
                     if dev_best_score is None or score[5] > dev_best_score[5]:
                         dev_best_score = score
