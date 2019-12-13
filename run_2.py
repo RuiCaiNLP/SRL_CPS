@@ -439,18 +439,18 @@ if __name__ == '__main__':
                                                                    fr_word2idx,
                                                                    lemma2idx, pos2idx, pretrain2idx, fr_pretrain2idx,
                                                                    deprel2idx, argument2idx, idx2word, shuffle=False,
-                                                                   lang="En")
+                                                                   lang="En", use_bert=True)
                     unlabeled_Generator_Fr = inter_utils.get_batch(unlabeled_dataset_fr, batch_size, word2idx,
                                                                    fr_word2idx,
                                                                    lemma2idx, pos2idx, pretrain2idx, fr_pretrain2idx,
                                                                    deprel2idx, argument2idx, idx2word, shuffle=False,
-                                                                   lang="Fr")
+                                                                   lang="Fr",use_bert=True)
                     unlabeled_data_en = next(unlabeled_Generator_En)
                     unlabeled_data_fr = next(unlabeled_Generator_Fr)
 
 
 
-                """
+
                 u_loss_pair, loss_word, = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True,
                                                     self_constrain=False, use_bert=use_bert)
                 optimizer.zero_grad()
@@ -461,7 +461,7 @@ if __name__ == '__main__':
 
                 if batch_i % 50 == 0:
                     log(batch_i, u_loss.item(), u_loss_2.item())
-                """
+
                 if batch_i > 0 and batch_i % show_steps == 0:
                     srl_model.eval()
                     _, pred = torch.max(out, 1)
