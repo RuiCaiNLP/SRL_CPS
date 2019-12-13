@@ -459,7 +459,7 @@ if __name__ == '__main__':
                     batch_size = 30
 
                     if batch_i % 50 == 0:
-                        log(batch_i, u_loss, u_loss_2)
+                        log(batch_i, u_loss.item(), u_loss_2.item())
 
                 if batch_i > 0 and batch_i % show_steps == 0:
                     srl_model.eval()
@@ -469,7 +469,7 @@ if __name__ == '__main__':
                     log('\n')
                     log('*' * 80)
 
-                    eval_train_batch(epoch, batch_i, loss.data[0], flat_argument, pred, argument2idx)
+                    #eval_train_batch(epoch, batch_i, loss.item(), flat_argument, pred, argument2idx)
 
                     log('FR test:')
                     score, dev_output = eval_data(srl_model, elmo, labeled_dataset_fr, batch_size, word2idx,
