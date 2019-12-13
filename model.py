@@ -256,11 +256,12 @@ class SR_Model(nn.Module):
         self.SR_Compressor = SR_Compressor(model_params)
         self.SR_Matcher = SR_Matcher(model_params)
         self.model = BertModel.from_pretrained('bert-base-multilingual-cased')
+        self.model.to(device)
         self.model.eval()
 
 
 
-    def parallel_train(self, batch_input):
+    def parallel_train(self, batch_input, use_bert):
         unlabeled_data_en, unlabeled_data_fr = batch_input
 
         pretrain_batch_fr = get_torch_variable_from_np(unlabeled_data_fr['pretrain'])
@@ -281,36 +282,56 @@ class SR_Model(nn.Module):
         seq_len_en = seq_len
         pretrain_emb = self.pretrained_embedding(pretrain_batch).detach()
 
+        if use_bert:
+            bert_input_ids_fr = get_torch_variable_from_np(unlabeled_data_fr['bert_input_ids'])
+            bert_input_mask_fr = get_torch_variable_from_np(unlabeled_data_fr['bert_input_mask'])
+            bert_out_positions_fr = get_torch_variable_from_np(unlabeled_data_fr['bert_out_positions'])
+
+            bert_emb_fr = self.model(bert_input_ids_fr, attention_mask=bert_input_mask_fr)
+            bert_emb_fr = bert_emb_fr[0]
+            bert_emb_fr = bert_emb_fr[:, 1:-1, :].contiguous().detach()
+            bert_emb_fr = bert_emb_fr[torch.arange(bert_emb_fr.size(0)).unsqueeze(-1), bert_out_positions_fr].detach()
+
+            bert_input_ids_en = get_torch_variable_from_np(unlabeled_data_en['bert_input_ids'])
+            bert_input_mask_en = get_torch_variable_from_np(unlabeled_data_en['bert_input_mask'])
+            bert_out_positions_en = get_torch_variable_from_np(unlabeled_data_en['bert_out_positions'])
+
+            bert_emb_en = self.model(bert_input_ids_en, attention_mask=bert_input_mask_en)
+            bert_emb_en = bert_emb_en[0]
+            bert_emb_en = bert_emb_en[:, 1:-1, :].contiguous().detach()
+            bert_emb_en = bert_emb_en[torch.arange(bert_emb_fr.size(0)).unsqueeze(-1), bert_out_positions_en].detach()
+
+
         seq_len = flag_emb.shape[1]
-        SRL_output = self.SR_Labeler(pretrain_emb, flag_emb.detach(), predicates_1D, seq_len, para=True)
+        SRL_output = self.SR_Labeler(bert_emb_en, flag_emb.detach(), predicates_1D, seq_len, para=True, use_bert=True)
 
         SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
         pred_recur = self.SR_Compressor(SRL_input.detach(), pretrain_emb,
-                                        flag_emb.detach(), word_id_emb.detach(), predicates_1D, seq_len, para=True)
+                                        flag_emb.detach(), word_id_emb.detach(), predicates_1D, seq_len, para=True, use_bert=True)
 
 
 
         seq_len_fr = flag_emb_fr.shape[1]
-        SRL_output_fr = self.SR_Labeler(pretrain_emb_fr, flag_emb_fr.detach(), predicates_1D_fr, seq_len_fr, para=True)
+        SRL_output_fr = self.SR_Labeler(bert_emb_fr, flag_emb_fr.detach(), predicates_1D_fr, seq_len_fr, para=True, use_bert=True)
 
         SRL_input_fr = SRL_output_fr.view(self.batch_size, seq_len_fr, -1)
-        pred_recur_fr = self.SR_Compressor(SRL_input_fr, pretrain_emb_fr,
-                                        flag_emb_fr.detach(), word_id_emb_fr, predicates_1D_fr, seq_len_fr, para=True)
+        pred_recur_fr = self.SR_Compressor(SRL_input_fr, bert_emb_fr,
+                                        flag_emb_fr.detach(), word_id_emb_fr, predicates_1D_fr, seq_len_fr, para=True, use_bert=True)
 
         #L2_loss_function = nn.MSELoss(size_average=False)
         #l2_loss = L2_loss_function(pred_recur_fr, pred_recur.detach())/self.batch_size
         """
         En event vector, En word
         """
-        output_word_en = self.SR_Matcher(pred_recur.detach(), pretrain_emb, flag_emb.detach(), word_id_emb.detach(), seq_len,
-                                         para=True)
+        output_word_en = self.SR_Matcher(pred_recur.detach(), bert_emb_en, flag_emb.detach(), word_id_emb.detach(), seq_len,
+                                         para=True, use_bert=True)
 
         #############################################
         """
         Fr event vector, En word
         """
-        output_word_fr = self.SR_Matcher(pred_recur_fr, pretrain_emb, flag_emb.detach(), word_id_emb.detach(), seq_len,
-                                      para=True)
+        output_word_fr = self.SR_Matcher(pred_recur_fr, bert_emb_en, flag_emb.detach(), word_id_emb.detach(), seq_len,
+                                      para=True, use_bert=True)
         unlabeled_loss_function = nn.KLDivLoss(size_average=False)
         output_word_en = F.softmax(output_word_en, dim=1).detach()
         output_word_fr = F.log_softmax(output_word_fr, dim=1)
@@ -319,13 +340,13 @@ class SR_Model(nn.Module):
         """
         En event vector, Fr word
         """
-        output_word_en = self.SR_Matcher(pred_recur.detach(), pretrain_emb_fr, flag_emb_fr.detach(), word_id_emb_fr.detach(), seq_len_fr,
-                                         para=True)
+        output_word_en = self.SR_Matcher(pred_recur.detach(), bert_emb_fr, flag_emb_fr.detach(), word_id_emb_fr.detach(), seq_len_fr,
+                                         para=True, use_bert=True)
         """
         Fr event vector, Fr word
         """
-        output_word_fr = self.SR_Matcher(pred_recur_fr, pretrain_emb_fr, flag_emb_fr.detach(), word_id_emb_fr.detach(), seq_len_fr,
-                                         para=True)
+        output_word_fr = self.SR_Matcher(pred_recur_fr, bert_emb_fr, flag_emb_fr.detach(), word_id_emb_fr.detach(), seq_len_fr,
+                                         para=True, use_bert=True)
         unlabeled_loss_function = nn.KLDivLoss(size_average=False)
         output_word_en = F.softmax(output_word_en, dim=1).detach()
         output_word_fr = F.log_softmax(output_word_fr, dim=1)
@@ -425,7 +446,7 @@ class SR_Model(nn.Module):
     def forward(self, batch_input, lang='En', unlabeled=False, self_constrain=False, use_bert=False):
         if unlabeled:
 
-            loss = self.parallel_train(batch_input)
+            loss = self.parallel_train(batch_input, use_bert)
 
             loss_word = 0
 
@@ -451,7 +472,7 @@ class SR_Model(nn.Module):
             bert_emb = bert_emb[0]
             bert_emb = bert_emb[:, 1:-1, :].contiguous().detach()
 
-            bert_emb = bert_emb[torch.arange(bert_emb.size(0)).unsqueeze(-1), bert_out_positions]
+            bert_emb = bert_emb[torch.arange(bert_emb.size(0)).unsqueeze(-1), bert_out_positions].detach()
 
 
         if lang == "En":
