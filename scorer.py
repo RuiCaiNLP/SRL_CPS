@@ -125,7 +125,7 @@ def eval_data(model, elmo, dataset, batch_size ,word2idx, fr_word2idx, lemma2idx
 
     for batch_i, input_data in enumerate(inter_utils.get_batch(dataset, batch_size, word2idx, fr_word2idx,
                                                              lemma2idx, pos2idx, pretrain2idx,
-                                                             fr_pretrain2idx, deprel2idx, argument2idx, idx2word, lang=lang, use_bert=False)):
+                                                             fr_pretrain2idx, deprel2idx, argument2idx, idx2word, lang=lang, use_bert=use_bert)):
         target_argument = input_data['argument']
         flat_argument = input_data['flat_argument']
         target_batch_variable = get_torch_variable_from_np(flat_argument)
