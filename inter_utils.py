@@ -84,7 +84,7 @@ def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx,
     role_number = len(argument2idx)
     if use_bert:
         tokenizer = BertTokenizer.from_pretrained('bert-base-multilingual-cased', do_lower_case=False)
-    if shuffle:
+    if shuffle and False:
         random.shuffle(input_data)
 
     for batch_i in range(int(math.ceil(len(input_data)/batch_size))):
@@ -200,7 +200,6 @@ def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx,
             for jdx in range(pad_flag_batch.shape[1]):
                 if int(pad_flag_batch[idx, jdx]) == 1:
                     pad_flag_indices[idx] = jdx
-
 
         batch = {
             "sentence_id":sentence_id_batch,

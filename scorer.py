@@ -125,7 +125,7 @@ def eval_data(model, elmo, dataset, batch_size ,word2idx, fr_word2idx, lemma2idx
 
     for batch_i, input_data in enumerate(inter_utils.get_batch(dataset, batch_size, word2idx, fr_word2idx,
                                                              lemma2idx, pos2idx, pretrain2idx,
-                                                             fr_pretrain2idx, deprel2idx, argument2idx, idx2word, lang=lang, use_bert=True)):
+                                                             fr_pretrain2idx, deprel2idx, argument2idx, idx2word, lang=lang, use_bert=False)):
         target_argument = input_data['argument']
         flat_argument = input_data['flat_argument']
         target_batch_variable = get_torch_variable_from_np(flat_argument)
@@ -137,7 +137,7 @@ def eval_data(model, elmo, dataset, batch_size ,word2idx, fr_word2idx, lemma2idx
         seq_len = input_data['seq_len']
         bs = input_data['batch_size']
         psl = input_data['pad_seq_len']
-        out, out_word = model(input_data, lang=lang, use_bert=True)
+        out, out_word = model(input_data, lang=lang, use_bert=use_bert)
 
         _, pred = torch.max(out, 1)
         pred = get_data(pred)

@@ -397,14 +397,15 @@ if __name__ == '__main__':
         dev_best_score = None
         test_best_score = None
         test_ood_best_score = None
+        use_bert = False
         unlabeled_Generator_En = inter_utils.get_batch(unlabeled_dataset_en, batch_size, word2idx, fr_word2idx,
                                                        lemma2idx, pos2idx, pretrain2idx, fr_pretrain2idx,
                                                        deprel2idx, argument2idx, idx2word, shuffle=False,
-                                                       lang="En", use_bert=True)
+                                                       lang="En", use_bert=use_bert)
         unlabeled_Generator_Fr = inter_utils.get_batch(unlabeled_dataset_fr, batch_size, word2idx, fr_word2idx,
                                                        lemma2idx, pos2idx, pretrain2idx, fr_pretrain2idx,
                                                        deprel2idx, argument2idx, idx2word, shuffle=False,
-                                                       lang="Fr", use_bert=True)
+                                                       lang="Fr", use_bert=use_bert)
 
         for epoch in range(30):
 
@@ -412,12 +413,12 @@ if __name__ == '__main__':
                     inter_utils.get_batch(train_dataset, batch_size, word2idx, fr_word2idx,
                                           lemma2idx, pos2idx, pretrain2idx, fr_pretrain2idx,
                                           deprel2idx, argument2idx, idx2word, shuffle=True,
-                                          lang='En', use_bert=True)):
+                                          lang='En', use_bert=use_bert)):
                 srl_model.train()
                 flat_argument = train_input_data['flat_argument']
                 target_batch_variable = get_torch_variable_from_np(flat_argument)
 
-                out, out_word = srl_model(train_input_data, lang='En', use_bert=True)
+                out, out_word = srl_model(train_input_data, lang='En', use_bert=use_bert)
                 #_,  prediction_batch_variable = torch.max(out, 1)
                 loss = criterion(out, target_batch_variable)
                 loss_word = criterion_word(out_word, target_batch_variable)
@@ -451,7 +452,7 @@ if __name__ == '__main__':
 
                 if False:
                     u_loss_pair, loss_word, = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True,
-                                                        self_constrain=False, use_bert=True)
+                                                        self_constrain=False, use_bert=use_bert)
                     optimizer.zero_grad()
                     u_loss, u_loss_2 = u_loss_pair
                     (u_loss + u_loss_2).backward()
@@ -478,7 +479,7 @@ if __name__ == '__main__':
                                                   pos2idx, pretrain2idx, fr_pretrain2idx, deprel2idx, argument2idx,
                                                   idx2argument, idx2word,
                                                   False,
-                                                  dev_predicate_correct, dev_predicate_sum, lang='Fr', use_bert=True)
+                                                  dev_predicate_correct, dev_predicate_sum, lang='Fr', use_bert=use_bert)
                     log('En test:')
                     eval_data(srl_model, elmo, dev_dataset, batch_size, word2idx,
                               fr_word2idx,
@@ -486,7 +487,7 @@ if __name__ == '__main__':
                               pos2idx, pretrain2idx, fr_pretrain2idx, deprel2idx, argument2idx,
                               idx2argument, idx2word,
                               False,
-                              dev_predicate_correct, dev_predicate_sum, lang='En', use_bert=True)
+                              dev_predicate_correct, dev_predicate_sum, lang='En', use_bert=use_bert)
 
                     if dev_best_score is None or score[5] > dev_best_score[5]:
                         dev_best_score = score
