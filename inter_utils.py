@@ -171,14 +171,18 @@ def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx,
         pad_argument_batch = np.array(pad_batch(argument_batch, batch_size, argument2idx['<PAD>']))
         flat_argument_batch = np.array([item for line in pad_argument_batch for item in line])
 
-        for i in range(batch_size):
-            for j in range(len(data_batch[i])):
-                role = data_batch[i][j][12]
-                role_idx = argument2idx.get(role, argument2idx["_"])
-                if role_idx == 1:
-                    continue
-                role_index_batch[i][role_idx] = j
-                role_mask_batch[i][role_idx] = 1
+        if False:
+            for i in range(batch_size):
+                for j in range(len(data_batch[i])):
+                    role = data_batch[i][j][12]
+                    role_idx = argument2idx.get(role, argument2idx["_"])
+                    if role_idx == 1:
+                        continue
+                    role_index_batch[i][role_idx] = j
+                    role_mask_batch[i][role_idx] = 1
+        else:
+            role_index_batch[i][role_idx] = None
+            role_mask_batch[i][role_idx] = None
 
         if lang=='En':
             pretrain_word_batch = [[pretrain2idx.get(item[6], pretrain2idx[_UNK_]) for item in sentence] for sentence in data_batch]
