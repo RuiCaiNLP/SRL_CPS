@@ -181,8 +181,8 @@ def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx,
                     role_index_batch[i][role_idx] = j
                     role_mask_batch[i][role_idx] = 1
         else:
-            role_index_batch[i][role_idx] = None
-            role_mask_batch[i][role_idx] = None
+            role_index_batch = None
+            role_mask_batch= None
 
         if lang=='En':
             pretrain_word_batch = [[pretrain2idx.get(item[6], pretrain2idx[_UNK_]) for item in sentence] for sentence in data_batch]
