@@ -422,7 +422,7 @@ if __name__ == '__main__':
                 loss = criterion(out, target_batch_variable)
                 loss_word = criterion_word(out_word, target_batch_variable)
                 if batch_i % 50 == 0:
-                    log(batch_i, loss, loss_word)
+                    log(batch_i, loss.item(), loss_word.item())
 
                 optimizer.zero_grad()
                 (loss + loss_word).backward()
