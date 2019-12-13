@@ -425,7 +425,7 @@ if __name__ == '__main__':
                     log(batch_i, loss.item(), loss_word.item())
 
                 optimizer.zero_grad()
-                (loss + loss_word).backward()
+                loss.backward()
                 optimizer.step()
 
 
