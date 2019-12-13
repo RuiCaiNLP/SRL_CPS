@@ -306,7 +306,7 @@ class SR_Model(nn.Module):
         SRL_output = self.SR_Labeler(bert_emb_en, flag_emb.detach(), predicates_1D, seq_len, para=True, use_bert=True)
 
         SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
-        pred_recur = self.SR_Compressor(SRL_input.detach(), pretrain_emb,
+        pred_recur = self.SR_Compressor(SRL_input.detach(), bert_emb_en,
                                         flag_emb.detach(), word_id_emb.detach(), predicates_1D, seq_len, para=True, use_bert=True)
 
 
