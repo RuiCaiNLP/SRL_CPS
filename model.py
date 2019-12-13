@@ -446,10 +446,13 @@ class SR_Model(nn.Module):
             bert_input_ids = get_torch_variable_from_np(batch_input['bert_input_ids'])
             bert_input_mask = get_torch_variable_from_np(batch_input['bert_input_mask'])
             bert_out_positions = get_torch_variable_from_np(batch_input['bert_out_positions'])
+
             bert_emb = self.model(bert_input_ids, attention_mask=bert_input_mask)
             bert_emb = bert_emb[0]
             bert_emb = bert_emb[:, 1:-1, :].contiguous().detach()
+
             bert_emb = bert_emb[torch.arange(bert_emb.size(0)).unsqueeze(-1), bert_out_positions]
+
 
         if lang == "En":
             pretrain_emb = self.pretrained_embedding(pretrain_batch).detach()

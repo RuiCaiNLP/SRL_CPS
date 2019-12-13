@@ -6,6 +6,8 @@ import random
 import sys
 from transformers import *
 
+tokenizer = BertTokenizer.from_pretrained('bert-base-multilingual-cased', do_lower_case=False)
+
 def log(*args, **kwargs):
     print(*args,file=sys.stderr, **kwargs)
 
@@ -48,19 +50,21 @@ def convert_example_to_features(tokens, tokenizer):
 
     assert isinstance(tokens, list)
 
-    input_tokens = tokens
+    input_tokens = []
     val_pos = []
     end_idx = 0
     for word in tokens:
+        #log(word)
         b_token = tokenizer.tokenize(word)  # we expect |token| = 1
+        #b_token = word
         input_tokens.extend(b_token)
         val_pos.append(end_idx)
         end_idx += len(b_token)
 
     input_tokens = ["[CLS]"] + input_tokens + ["[SEP]"]
     # input_ids = tokenizer.convert_tokens_to_ids(tokens)
-    input_ids = convert_tokens_to_ids(input_tokens)
 
+    input_ids = convert_tokens_to_ids(input_tokens)
     assert len(input_ids) == len(input_tokens)
     assert max(input_ids) < len(tokenizer.vocab)
 
@@ -83,8 +87,8 @@ def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx,
 
 
     role_number = len(argument2idx)
-    if use_bert:
-        tokenizer = BertTokenizer.from_pretrained('bert-base-multilingual-cased', do_lower_case=False)
+    #log("start get batch")
+
     if shuffle and False:
         random.shuffle(input_data)
 
@@ -140,9 +144,11 @@ def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx,
             pad_word_batch = np.array(pad_batch(word_batch, batch_size, fr_word2idx[_PAD_]))
 
         if use_bert:
-            bert_inst_batch = [convert_example_to_features(sen, tokenizer) for sen in text_batch ]
+            bert_inst_batch = []
+            for sen in text_batch:
+                bert_inst_batch.append(convert_example_to_features(sen, tokenizer))
             bert_max_length = max([len(inst['input_ids']) for inst in bert_inst_batch])
-            batch_length = len(pad_word_batch[0])+2
+            batch_length = len(pad_word_batch[0])
             bert_inputs_ids = np.zeros([batch_size, bert_max_length], dtype=np.int64)
             bert_input_mask = np.zeros([batch_size, bert_max_length], dtype=np.int64)
             bert_out_positions = np.empty([batch_size, batch_length], dtype=np.int64)
@@ -155,12 +161,15 @@ def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx,
                     low = berts['out_positions'][-1]
                     assert (bert_max_length - 2) > low
                     bert_out_positions[i] = berts['out_positions'] + [low] * required_pad
+                else:
+                    bert_out_positions[i] = berts['out_positions']
+
+
 
         else:
             bert_inputs_ids = None
             bert_input_mask = None
-
-
+            bert_out_positions = None
         word_times_batch = []
         for sentence in data_batch:
             word_dict = dict()
