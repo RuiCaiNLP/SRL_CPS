@@ -51,10 +51,11 @@ def convert_example_to_features(tokens, tokenizer):
     input_tokens = tokens
     val_pos = []
     end_idx = 0
-    #for word in tokens:
-    ##    input_tokens.extend(b_token)
-     #   val_pos.append(end_idx)
-     #   end_idx += len(b_token)
+    for word in tokens:
+        b_token = tokenizer.tokenize(word)  # we expect |token| = 1
+        input_tokens.extend(b_token)
+        val_pos.append(end_idx)
+        end_idx += len(b_token)
 
     input_tokens = ["[CLS]"] + input_tokens + ["[SEP]"]
     # input_ids = tokenizer.convert_tokens_to_ids(tokens)
@@ -140,14 +141,21 @@ def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx,
 
         if use_bert:
             bert_inst_batch = [convert_example_to_features(sen, tokenizer) for sen in text_batch ]
-            #bert_max_length = max([len(inst['input_ids']) for inst in bert_inst_batch])
-            bert_max_length = len(pad_word_batch[0])+2
+            bert_max_length = max([len(inst['input_ids']) for inst in bert_inst_batch])
+            batch_length = len(pad_word_batch[0])+2
             bert_inputs_ids = np.zeros([batch_size, bert_max_length], dtype=np.int64)
             bert_input_mask = np.zeros([batch_size, bert_max_length], dtype=np.int64)
+            bert_out_positions = np.empty([batch_size, batch_length], dtype=np.int64)
             for i in range(batch_size):
                 berts = bert_inst_batch[i]
                 bert_inputs_ids[i, :len(berts['input_ids'])] = berts['input_ids']
                 bert_input_mask[i, :len(berts['input_mask'])] = berts['input_mask']
+                required_pad = batch_length - len(berts['out_positions'])
+                if required_pad > 0:
+                    low = berts['out_positions'][-1]
+                    assert (bert_max_length - 2) > low
+                    bert_out_positions[i] = berts['out_positions'] + [low] * required_pad
+
         else:
             bert_inputs_ids = None
             bert_input_mask = None
@@ -241,7 +249,8 @@ def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx,
             'role_index': role_index_batch,
             'role_mask': role_mask_batch,
             'bert_input_ids': bert_inputs_ids,
-            'bert_input_mask': bert_input_mask
+            'bert_input_mask': bert_input_mask,
+            'bert_out_positions': bert_out_positions
         }
 
         yield batch

@@ -397,7 +397,7 @@ if __name__ == '__main__':
         dev_best_score = None
         test_best_score = None
         test_ood_best_score = None
-        use_bert = False
+        use_bert = True
         unlabeled_Generator_En = inter_utils.get_batch(unlabeled_dataset_en, batch_size, word2idx, fr_word2idx,
                                                        lemma2idx, pos2idx, pretrain2idx, fr_pretrain2idx,
                                                        deprel2idx, argument2idx, idx2word, shuffle=False,
