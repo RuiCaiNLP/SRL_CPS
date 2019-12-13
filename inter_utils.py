@@ -118,11 +118,13 @@ def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx,
 
 
 
-        predicates_idx_batch = []
+        predicates_idx_batch = [0]* batch_size
+        idx = 0
         for sentence in data_batch:
             for id, item in enumerate(sentence):
                 if int(item[5]) == 1:
-                    predicates_idx_batch.append(id)
+                    predicates_idx_batch[idx] = id
+                    idx += 1
                     break
 
         text_batch = [[item[6] for item in sentence] for sentence in data_batch]
