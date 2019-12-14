@@ -450,7 +450,7 @@ if __name__ == '__main__':
 
 
 
-
+                """
                 u_loss_pair, loss_word, = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True,
                                                     self_constrain=False, use_bert=use_bert)
                 optimizer.zero_grad()
@@ -458,10 +458,10 @@ if __name__ == '__main__':
                 (u_loss + u_loss_2).backward()
                 optimizer.step()
                 batch_size = 30
-
+                
                 if batch_i % 50 == 0:
                     log(batch_i, u_loss.item(), u_loss_2.item())
-
+                """
                 if batch_i > 0 and batch_i % show_steps == 0:
                     srl_model.eval()
                     _, pred = torch.max(out, 1)
