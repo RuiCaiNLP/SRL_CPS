@@ -352,7 +352,7 @@ if __name__ == '__main__':
         print('\t model build finished! consuming {} s'.format(int(time.time() - start_t)))
 
         print('\nStart training...')
-
+        exit()
         dev_best_score = None
         test_best_score = None
         test_ood_best_score = None
@@ -456,7 +456,7 @@ if __name__ == '__main__':
                     print('\tdev best P:{:.2f} R:{:.2f} F1:{:.2f} NP:{:.2f} NR:{:.2f} NF1:{:.2f}'.format(
                         dev_best_score[0] * 100, dev_best_score[1] * 100,
                         dev_best_score[2] * 100, dev_best_score[3] * 100,
-                        dev_best_score[4] * 100, dev_best_score[5] * 100), file=log_fh)
+                        dev_best_score[4] * 100, dev_best_score[5] * 100))
 
     else:
 
