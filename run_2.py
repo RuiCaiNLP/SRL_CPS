@@ -59,12 +59,12 @@ def make_parser():
     parser = argparse.ArgumentParser(description='A Unified Syntax-aware SRL model')
 
     # input
-    parser.add_argument('--train_data', type=str, help='Train Dataset with CoNLL09 format')
-    parser.add_argument('--valid_data', type=str, help='Train Dataset with CoNLL09 format')
-    parser.add_argument('--train_data_fr', type=str, help='Train Dataset with CoNLL09 format')
-    parser.add_argument('--valid_data_fr', type=str, help='Train Dataset with CoNLL09 format')
-    parser.add_argument('--unlabeled_data_en', type=str, help='Train Dataset with CoNLL09 format')
-    parser.add_argument('--unlabeled_data_fr', type=str, help='Train Dataset with CoNLL09 format')
+    #parser.add_argument('--train_data', type=str, help='Train Dataset with CoNLL09 format')
+    #parser.add_argument('--valid_data', type=str, help='Train Dataset with CoNLL09 format')
+    #parser.add_argument('--train_data_fr', type=str, help='Train Dataset with CoNLL09 format')
+    #parser.add_argument('--valid_data_fr', type=str, help='Train Dataset with CoNLL09 format')
+    #parser.add_argument('--unlabeled_data_en', type=str, help='Train Dataset with CoNLL09 format')
+    #parser.add_argument('--unlabeled_data_fr', type=str, help='Train Dataset with CoNLL09 format')
     parser.add_argument('--seed', type=int, default=100, help='the random seed')
 
     # this default value is from PATH LSTM, you can just follow it too
@@ -79,10 +79,10 @@ def make_parser():
     # preprocess
     parser.add_argument('--preprocess', action='store_true',
                         help='Preprocess')
-    parser.add_argument('--tmp_path', type=str, help='temporal path')
-    parser.add_argument('--model_path', type=str, help='model path')
+    #parser.add_argument('--tmp_path', type=str, help='temporal path')
+    #parser.add_argument('--model_path', type=str, help='model path')
     parser.add_argument('--result_path', type=str, help='result path')
-    parser.add_argument('--pretrain_embedding', type=str, help='Pretrain embedding like GloVe or word2vec')
+    #parser.add_argument('--pretrain_embedding', type=str, help='Pretrain embedding like GloVe or word2vec')
     parser.add_argument('--pretrain_emb_size', type=int, default=100,
                         help='size of pretrain word embeddings')
 
@@ -169,55 +169,10 @@ if __name__ == '__main__':
     # set random seed
     seed_everything(args.seed, USE_CUDA)
 
-    train_file = args.train_data
-    dev_file = args.valid_data
-    train_file_fr = args.train_data_fr
-    dev_file_fr = args.valid_data_fr
+
     use_bert = args.use_bert
 
     # do preprocessing
-    if args.preprocess:
-        tmp_path = args.tmp_path
-
-        if tmp_path is None:
-            log('Fatal error: tmp_path cannot be None!')
-            exit()
-
-        log('start preprocessing data...')
-
-        start_t = time.time()
-
-        # make word/pos/lemma/deprel/argument vocab
-        log('\n-- making (word/lemma/pos/argument/predicate) vocab --')
-        vocab_path = tmp_path
-        log('word:')
-        make_word_vocab(train_file, vocab_path, unify_pred=False)
-        log('pos:')
-        make_pos_vocab(train_file, vocab_path, unify_pred=False)
-        log('lemma:')
-        make_lemma_vocab(train_file, vocab_path, unify_pred=False)
-        log('deprel:')
-        make_deprel_vocab(train_file, vocab_path, unify_pred=False)
-        log('argument:')
-        make_argument_vocab(train_file, dev_file, None, vocab_path, unify_pred=False)
-        log('predicate:')
-        make_pred_vocab(train_file, dev_file, None, vocab_path)
-
-        deprel_vocab = load_deprel_vocab(os.path.join(tmp_path, 'deprel.vocab'))
-
-        # shrink pretrained embeding
-        log('\n-- shrink pretrained embeding --')
-        pretrain_file = args.pretrain_embedding
-        pretrained_emb_size = args.pretrain_emb_size
-        pretrain_path = tmp_path
-        shrink_pretrained_embedding(train_file, dev_file, dev_file, pretrain_file, pretrained_emb_size, pretrain_path)
-
-        make_dataset_input(train_file, os.path.join(tmp_path, 'train.input'), unify_pred=False,
-                           deprel_vocab=deprel_vocab, pickle_dump_path=os.path.join(tmp_path, 'train.pickle.input'))
-        make_dataset_input(dev_file, os.path.join(tmp_path, 'dev.input'), unify_pred=False, deprel_vocab=deprel_vocab,
-                           pickle_dump_path=os.path.join(tmp_path, 'dev.pickle.input'))
-
-        log('\t data preprocessing finished! consuming {} s'.format(int(time.time() - start_t)))
 
     log('\t start loading data...')
     start_t = time.time()
