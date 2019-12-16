@@ -21,9 +21,9 @@ from data_utils import output_predict
 from data_utils import *
 
 
-def log(*args, **kwargs):
+#def log(*args, **kwargs):
     #print(*args,file=sys.stderr, **kwargs)
-    print(*args,  **kwargs)
+#    print(*args,  **kwargs)
 
 
 def seed_everything(seed, cuda=False):
@@ -52,8 +52,8 @@ def print_PRF(probs, gold):
     P = correct/NonullPredict + 0.0001
     R = correct/NonullTruth
     F = 2*P*R/(P+R)
-    log(correct, NonullPredict, NonullTruth)
-    log(P, R, F)
+    print(correct, NonullPredict, NonullTruth)
+    print(P, R, F)
 
 
 def make_parser():
@@ -163,7 +163,7 @@ def make_parser():
 
 
 if __name__ == '__main__':
-    log('cross-lingual model')
+    print('cross-lingual model')
 
     args = make_parser().parse_args()
 
@@ -175,7 +175,7 @@ if __name__ == '__main__':
 
     # do preprocessing
 
-    log('\t start loading data...')
+    print('\t start loading data...')
     start_t = time.time()
 
     train_input_file = os.path.join(os.path.dirname(__file__), 'temp/train.pickle.input')
@@ -231,17 +231,17 @@ if __name__ == '__main__':
     pretrain_emb_weight = data_utils.load_dump_data(os.path.join(os.path.dirname(__file__), 'temp/pretrain.emb.bin'))
     fr_pretrain_emb_weight = data_utils.load_dump_data(os.path.join(os.path.dirname(__file__), 'temp/fr_pretrain.emb.bin'))
 
-    log('\t data loading finished! consuming {} s'.format(int(time.time() - start_t)))
+    print('\t data loading finished! consuming {} s'.format(int(time.time() - start_t)))
 
-    log(word2idx['<UNK>'])
-    log(pretrain_emb_weight[word2idx['<UNK>']])
-    log(word2idx['<PAD>'])
-    log(pretrain_emb_weight[fr_word2idx['<PAD>']])
+    print(word2idx['<UNK>'])
+    print(pretrain_emb_weight[word2idx['<UNK>']])
+    print(word2idx['<PAD>'])
+    print(pretrain_emb_weight[fr_word2idx['<PAD>']])
     # result_path = os.path.join(os.path.dirname(__file__),'result/')
 
     result_path = args.result_path
 
-    log('\t start building model...')
+    print('\t start building model...')
     start_t = time.time()
 
     dev_predicate_sum = dev_data['predicate_sum']
@@ -344,11 +344,11 @@ if __name__ == '__main__':
         optimizer = optim.Adam(srl_model.parameters(), lr=learning_rate)
         #optimizer_para = optim.Adam(srl_model.SR_Labeler.parameters(), lr=learning_rate)
 
-        log(srl_model)
+        print(srl_model)
 
-        log('\t model build finished! consuming {} s'.format(int(time.time() - start_t)))
+        print('\t model build finished! consuming {} s'.format(int(time.time() - start_t)))
 
-        log('\nStart training...')
+        print('\nStart training...')
 
         dev_best_score = None
         test_best_score = None
@@ -379,7 +379,7 @@ if __name__ == '__main__':
                 loss = criterion(out, target_batch_variable)
                 loss_word = criterion_word(out_word, target_batch_variable)
                 if batch_i % 50 == 0:
-                    log(batch_i, loss.item(), loss_word.item())
+                    print(batch_i, loss.item(), loss_word.item())
 
                 optimizer.zero_grad()
                 (loss+loss_word).backward()
@@ -423,12 +423,12 @@ if __name__ == '__main__':
                     _, pred = torch.max(out, 1)
                     pred = get_data(pred)
 
-                    log('\n')
-                    log('*' * 80)
+                    print('\n')
+                    print('*' * 80)
 
                     #eval_train_batch(epoch, batch_i, loss.item(), flat_argument, pred, argument2idx)
 
-                    log('FR test:')
+                    print('FR test:')
                     score, dev_output = eval_data(srl_model, elmo, labeled_dataset_fr, batch_size, word2idx,
                                                   fr_word2idx,
                                                   lemma2idx,
@@ -436,7 +436,7 @@ if __name__ == '__main__':
                                                   idx2argument, idx2word,
                                                   False,
                                                   dev_predicate_correct, dev_predicate_sum, lang='Fr', use_bert=use_bert)
-                    log('En test:')
+                    print('En test:')
                     eval_data(srl_model, elmo, dev_dataset, batch_size, word2idx,
                               fr_word2idx,
                               lemma2idx,
@@ -451,7 +451,7 @@ if __name__ == '__main__':
                         ##    os.path.join(result_path, 'dev_argument_{:.2f}.pred'.format(dev_best_score[2] * 100)),
                          #   dev_output)
                         # torch.save(srl_model, os.path.join(os.path.dirname(__file__),'model/best_{:.2f}.pkl'.format(dev_best_score[2]*100)))
-                    log('\tdev best P:{:.2f} R:{:.2f} F1:{:.2f} NP:{:.2f} NR:{:.2f} NF1:{:.2f}'.format(
+                    print('\tdev best P:{:.2f} R:{:.2f} F1:{:.2f} NP:{:.2f} NR:{:.2f} NF1:{:.2f}'.format(
                         dev_best_score[0] * 100, dev_best_score[1] * 100,
                         dev_best_score[2] * 100, dev_best_score[3] * 100,
                         dev_best_score[4] * 100, dev_best_score[5] * 100))
