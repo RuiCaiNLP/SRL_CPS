@@ -22,7 +22,8 @@ from data_utils import *
 
 
 def log(*args, **kwargs):
-    print(*args,file=sys.stderr, **kwargs)
+    #print(*args,file=sys.stderr, **kwargs)
+    print(*args,  **kwargs)
 
 
 def seed_everything(seed, cuda=False):
