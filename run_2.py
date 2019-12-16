@@ -446,9 +446,9 @@ if __name__ == '__main__':
 
                     if dev_best_score is None or score[5] > dev_best_score[5]:
                         dev_best_score = score
-                        output_predict(
-                            os.path.join(result_path, 'dev_argument_{:.2f}.pred'.format(dev_best_score[2] * 100)),
-                            dev_output)
+                        #output_predict(
+                        ##    os.path.join(result_path, 'dev_argument_{:.2f}.pred'.format(dev_best_score[2] * 100)),
+                         #   dev_output)
                         # torch.save(srl_model, os.path.join(os.path.dirname(__file__),'model/best_{:.2f}.pkl'.format(dev_best_score[2]*100)))
                     log('\tdev best P:{:.2f} R:{:.2f} F1:{:.2f} NP:{:.2f} NR:{:.2f} NF1:{:.2f}'.format(
                         dev_best_score[0] * 100, dev_best_score[1] * 100,
