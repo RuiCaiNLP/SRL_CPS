@@ -163,8 +163,10 @@ def make_parser():
 
 
 if __name__ == '__main__':
-    log_fh = open('result/log', 'w')
+    log_fh = open('result/log_2', 'w')
+    log_fh.write("ccc")
     print('cross-lingual model')
+    log_fh.close()
 
     args = make_parser().parse_args()
 
@@ -380,8 +382,7 @@ if __name__ == '__main__':
                 loss = criterion(out, target_batch_variable)
                 loss_word = criterion_word(out_word, target_batch_variable)
                 if batch_i % 50 == 0:
-                    print(batch_i, loss.item(), loss_word.item(), file=log_fh)
-
+                    print(batch_i, loss.item(), loss_word.item())
                 optimizer.zero_grad()
                 (loss+loss_word).backward()
                 optimizer.step()
@@ -429,7 +430,7 @@ if __name__ == '__main__':
 
                     #eval_train_batch(epoch, batch_i, loss.item(), flat_argument, pred, argument2idx)
 
-                    print('FR test:',file=log_fh)
+                    print('FR test:')
                     score, dev_output = eval_data(srl_model, elmo, labeled_dataset_fr, batch_size, word2idx,
                                                   fr_word2idx,
                                                   lemma2idx,
@@ -437,7 +438,7 @@ if __name__ == '__main__':
                                                   idx2argument, idx2word,
                                                   False,
                                                   dev_predicate_correct, dev_predicate_sum, lang='Fr', use_bert=use_bert)
-                    print('En test:', file=log_fh)
+                    print('En test:')
                     eval_data(srl_model, elmo, dev_dataset, batch_size, word2idx,
                               fr_word2idx,
                               lemma2idx,

@@ -81,7 +81,7 @@ def sem_f1_score(target, predict, argument2idx, unify_pred = False, predicate_co
 
     NF1 = 2 * NP * NR / (NP + NR + 1e-13)
 
-    log('\teval accurate:{:.2f} predict:{} golden:{} correct:{} P:{:.2f} R:{:.2f} F1:{:.2f} NP:{:.2f} NR:{:.2f} NF1:{:.2f}'.format(num_correct/total*100, predict_args, golden_args, correct_args, P*100, R*100, F1*100, NP*100, NR *100, NF1 * 100), file=log_fh)
+    print('\teval accurate:{:.2f} predict:{} golden:{} correct:{} P:{:.2f} R:{:.2f} F1:{:.2f} NP:{:.2f} NR:{:.2f} NF1:{:.2f}'.format(num_correct/total*100, predict_args, golden_args, correct_args, P*100, R*100, F1*100, NP*100, NR *100, NF1 * 100))
 
     return (P, R, F1, NP, NR, NF1)
 

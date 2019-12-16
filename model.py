@@ -13,9 +13,6 @@ from utils import bilinear
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-def log(*args, **kwargs):
-    print(*args,file=sys.stderr, **kwargs)
-
 class SR_Labeler(nn.Module):
     def __init__(self, model_params):
         super(SR_Labeler, self).__init__()
