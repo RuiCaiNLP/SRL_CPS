@@ -163,6 +163,7 @@ def make_parser():
 
 
 if __name__ == '__main__':
+    log_fh = open('result/log', 'w')
     print('cross-lingual model')
 
     args = make_parser().parse_args()
@@ -379,7 +380,7 @@ if __name__ == '__main__':
                 loss = criterion(out, target_batch_variable)
                 loss_word = criterion_word(out_word, target_batch_variable)
                 if batch_i % 50 == 0:
-                    print(batch_i, loss.item(), loss_word.item())
+                    print(batch_i, loss.item(), loss_word.item(), file=log_fh)
 
                 optimizer.zero_grad()
                 (loss+loss_word).backward()
@@ -428,7 +429,7 @@ if __name__ == '__main__':
 
                     #eval_train_batch(epoch, batch_i, loss.item(), flat_argument, pred, argument2idx)
 
-                    print('FR test:')
+                    print('FR test:',file=log_fh)
                     score, dev_output = eval_data(srl_model, elmo, labeled_dataset_fr, batch_size, word2idx,
                                                   fr_word2idx,
                                                   lemma2idx,
@@ -436,7 +437,7 @@ if __name__ == '__main__':
                                                   idx2argument, idx2word,
                                                   False,
                                                   dev_predicate_correct, dev_predicate_sum, lang='Fr', use_bert=use_bert)
-                    print('En test:')
+                    print('En test:', file=log_fh)
                     eval_data(srl_model, elmo, dev_dataset, batch_size, word2idx,
                               fr_word2idx,
                               lemma2idx,
@@ -454,7 +455,7 @@ if __name__ == '__main__':
                     print('\tdev best P:{:.2f} R:{:.2f} F1:{:.2f} NP:{:.2f} NR:{:.2f} NF1:{:.2f}'.format(
                         dev_best_score[0] * 100, dev_best_score[1] * 100,
                         dev_best_score[2] * 100, dev_best_score[3] * 100,
-                        dev_best_score[4] * 100, dev_best_score[5] * 100))
+                        dev_best_score[4] * 100, dev_best_score[5] * 100), file=log_fh)
 
     else:
 
