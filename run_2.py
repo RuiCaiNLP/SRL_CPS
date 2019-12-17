@@ -163,10 +163,8 @@ def make_parser():
 
 
 if __name__ == '__main__':
-    log_fh = open('result/log_2', 'w')
-    log_fh.write("ccc")
     print('cross-lingual model')
-    log_fh.close()
+
 
     args = make_parser().parse_args()
 
@@ -352,7 +350,6 @@ if __name__ == '__main__':
         print('\t model build finished! consuming {} s'.format(int(time.time() - start_t)))
 
         print('\nStart training...')
-        exit()
         dev_best_score = None
         test_best_score = None
         test_ood_best_score = None
