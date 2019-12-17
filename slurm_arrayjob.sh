@@ -140,7 +140,7 @@ echo "Command ran successfully!"
 echo "Moving output data back to DFS"
 
 src_path=${SCRATCH_HOME}/SRL_CPS/results
-dest_path=${repo_home}/SRL_CPS/results
+dest_path=${repo_home}/results
 rsync --archive --update --compress --progress ${src_path}/ ${dest_path}
 
 # =========================
