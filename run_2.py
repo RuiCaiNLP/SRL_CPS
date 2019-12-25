@@ -353,7 +353,7 @@ if __name__ == '__main__':
         dev_best_score = None
         test_best_score = None
         test_ood_best_score = None
-        use_bert = True
+        use_bert = False
         unlabeled_Generator_En = inter_utils.get_batch(unlabeled_dataset_en, batch_size, word2idx, fr_word2idx,
                                                        lemma2idx, pos2idx, pretrain2idx, fr_pretrain2idx,
                                                        deprel2idx, argument2idx, idx2word, shuffle=False,
@@ -384,7 +384,7 @@ if __name__ == '__main__':
                 (loss+loss_word).backward()
                 optimizer.step()
 
-
+                """
                 #batch_size=1
                 try:
                     unlabeled_data_en = next(unlabeled_Generator_En)
@@ -405,7 +405,7 @@ if __name__ == '__main__':
 
 
 
-                """
+                
                 u_loss_pair, loss_word, = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True,
                                                     self_constrain=False, use_bert=use_bert)
                 optimizer.zero_grad()
