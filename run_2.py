@@ -363,7 +363,7 @@ if __name__ == '__main__':
                                                        deprel2idx, argument2idx, idx2word, shuffle=False,
                                                        lang="Fr", use_bert=use_bert)
 
-        for epoch in range(3):
+        for epoch in range(30):
 
             for batch_i, train_input_data in enumerate(
                     inter_utils.get_batch(train_dataset, batch_size, word2idx, fr_word2idx,
