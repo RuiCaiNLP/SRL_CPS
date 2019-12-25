@@ -254,7 +254,7 @@ class SR_Model(nn.Module):
         self.SR_Compressor = SR_Compressor(model_params)
         self.SR_Matcher = SR_Matcher(model_params)
         self.model = BertModel.from_pretrained('bert-base-multilingual-cased')
-        for name, param in self.bert.named_parameters():
+        for name, param in self.model.named_parameters():
             param.requires_grad = False
         self.model.to(device)
         self.model.eval()
