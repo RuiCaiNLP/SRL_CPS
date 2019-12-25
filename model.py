@@ -64,6 +64,7 @@ class SR_Labeler(nn.Module):
             bilstm_output, (_, bilstm_final_state) = self.bilstm_layer(input_emb, self.bilstm_hidden_state)
         else:
             bilstm_output, (_, bilstm_final_state) = self.bilstm_bert(input_emb, self.bilstm_hidden_state)
+
         bilstm_output = bilstm_output.contiguous()
         hidden_input = bilstm_output.view(bilstm_output.shape[0] * bilstm_output.shape[1], -1)
         hidden_input = hidden_input.view(self.batch_size, seq_len, -1)
@@ -253,6 +254,8 @@ class SR_Model(nn.Module):
         self.SR_Compressor = SR_Compressor(model_params)
         self.SR_Matcher = SR_Matcher(model_params)
         self.model = BertModel.from_pretrained('bert-base-multilingual-cased')
+        for name, param in self.bert.named_parameters():
+            param.requires_grad = False
         self.model.to(device)
         self.model.eval()
 
