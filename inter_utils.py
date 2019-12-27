@@ -136,7 +136,7 @@ def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx,
 
         text_batch = [[item[6] for item in sentence] for sentence in data_batch]
         for i in range(len(text_batch)):
-            text_batch.append("_END")
+            text_batch[i].append("_END")
         if len(text_batch) < batch_size:
             text_batch += [[_PAD_]] * (batch_size - len(text_batch))
 
