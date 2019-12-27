@@ -56,7 +56,7 @@ def convert_example_to_features(tokens, tokenizer):
     for word in tokens:
         #log(word)
         if word == '<NUM>':
-            word = '0'
+            word = str(end_idx)
         b_token = tokenizer.tokenize(word)  # we expect |token| = 1
         #b_token = word
         input_tokens.extend(b_token)
