@@ -145,7 +145,7 @@ def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx,
 
         if len(text_batch) < batch_size:
             text_batch += [[_PAD_]] * (batch_size - len(text_batch))
-        print(text_batch)
+        #print(text_batch)
 
         if lang=='En':
             word_batch = [[word2idx.get(item[6],word2idx[_UNK_]) for item in sentence] for sentence in data_batch]
