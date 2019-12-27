@@ -56,7 +56,7 @@ def convert_example_to_features(tokens, tokenizer):
     for word in tokens:
         #log(word)
         if word == '<NUM>':
-            word = str(end_idx)
+            word = '0'
         b_token = tokenizer.tokenize(word)  # we expect |token| = 1
         #b_token = word
         input_tokens.extend(b_token)
@@ -65,8 +65,8 @@ def convert_example_to_features(tokens, tokenizer):
 
     input_tokens = ["[CLS]"] + input_tokens + ["[SEP]"]
     # input_ids = tokenizer.convert_tokens_to_ids(tokens)
-
     input_ids = convert_tokens_to_ids(input_tokens)
+
     assert len(input_ids) == len(input_tokens)
     assert max(input_ids) < len(tokenizer.vocab)
 
