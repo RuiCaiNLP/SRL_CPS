@@ -110,6 +110,7 @@ def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx,
         for i in range(len(data_batch)):
             last_line = data_batch[i][-1].copy()
             last_line[6] = '_END'
+            last_line[12] = '<PAD>'
             data_batch[i].append(last_line)
             #print(data_batch[i][-1])
 
