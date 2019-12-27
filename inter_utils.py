@@ -107,9 +107,9 @@ def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx,
         role_mask_batch = np.zeros((batch_size, role_number), dtype=int)
 
         ##append the end
-        for i in range(len(data_batch)):
-            data_batch[i].append(data_batch[i][-1])
-            data_batch[i][-1][6] = '_END'
+        #for i in range(len(data_batch)):
+        #    data_batch[i].append(data_batch[i][-1])
+        #    data_batch[i][-1][6] = '_END'
 
         sentence_id_batch = [sentence[0][0] for sentence in data_batch]
         predicate_id_batch = [sentence[0][1] for sentence in data_batch]
