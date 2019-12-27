@@ -56,7 +56,7 @@ def convert_example_to_features(tokens, tokenizer):
     for word in tokens:
         #log(word)
         if word == '<NUM>':
-            word = str(end_idx)
+            word = '0'
         b_token = tokenizer.tokenize(word)  # we expect |token| = 1
         #b_token = word
         input_tokens.extend(b_token)
@@ -135,6 +135,8 @@ def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx,
                     break
 
         text_batch = [[item[6] for item in sentence] for sentence in data_batch]
+        for i in range(len(text_batch)):
+            text_batch.append("_END")
         if len(text_batch) < batch_size:
             text_batch += [[_PAD_]] * (batch_size - len(text_batch))
 
@@ -188,8 +190,8 @@ def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx,
         pad_word_times_batch = np.array(pad_batch(word_times_batch, batch_size, 0))
 
 
-        argument_batch = [[argument2idx.get(item[12],argument2idx['<PAD>']) for item in sentence] for sentence in data_batch]
-        pad_argument_batch = np.array(pad_batch(argument_batch, batch_size, argument2idx['<PAD>']))
+        argument_batch = [[argument2idx.get(item[12],argument2idx['_']) for item in sentence] for sentence in data_batch]
+        pad_argument_batch = np.array(pad_batch(argument_batch, batch_size, argument2idx[_PAD_]))
         flat_argument_batch = np.array([item for line in pad_argument_batch for item in line])
 
         if False:
