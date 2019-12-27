@@ -156,7 +156,7 @@ def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx,
             for sen in text_batch:
                 bert_inst_batch.append(convert_example_to_features(sen, tokenizer))
             bert_max_length = max([len(inst['input_ids']) for inst in bert_inst_batch])
-            batch_length = len(pad_word_batch[0])+1
+            batch_length = len(pad_word_batch[0])
             bert_inputs_ids = np.zeros([batch_size, bert_max_length], dtype=np.int64)
             bert_input_mask = np.zeros([batch_size, bert_max_length], dtype=np.int64)
             bert_out_positions = np.empty([batch_size, batch_length], dtype=np.int64)
