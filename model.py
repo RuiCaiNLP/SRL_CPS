@@ -477,6 +477,8 @@ class SR_Model(nn.Module):
             bert_emb = bert_emb[torch.arange(bert_emb.size(0)).unsqueeze(-1), bert_out_positions].detach()
 
             for i in range(len(bert_emb)):
+                if i >= len(actual_lens):
+                    break
                 for j in range(len(bert_emb[i])):
                     if j >= actual_lens[i]:
                         bert_emb[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
