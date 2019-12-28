@@ -381,7 +381,7 @@ if __name__ == '__main__':
                 if batch_i % 50 == 0:
                     print(batch_i, loss.item(), loss_word.item())
                 optimizer.zero_grad()
-                loss.backward()
+                (loss+loss_word).backward()
                 optimizer.step()
 
                 """
