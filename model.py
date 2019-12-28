@@ -463,6 +463,8 @@ class SR_Model(nn.Module):
         word_id = get_torch_variable_from_np(batch_input['word_times'])
         word_id_emb = self.id_embedding(word_id)
         flag_emb = self.flag_embedding(flag_batch)
+        actual_lens = batch_input['seq_len']
+        #print(actual_lens)
         if use_bert:
             bert_input_ids = get_torch_variable_from_np(batch_input['bert_input_ids'])
             bert_input_mask = get_torch_variable_from_np(batch_input['bert_input_mask'])
@@ -473,6 +475,13 @@ class SR_Model(nn.Module):
             bert_emb = bert_emb[:, 1:-1, :].contiguous().detach()
 
             bert_emb = bert_emb[torch.arange(bert_emb.size(0)).unsqueeze(-1), bert_out_positions].detach()
+
+            for i in range(len(bert_emb)):
+                for j in range(len(bert_emb[i])):
+                    if j >= actual_lens[i]:
+                        bert_emb[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
+
+            bert_emb = bert_emb.detach()
 
 
         if lang == "En":
