@@ -415,7 +415,7 @@ if __name__ == '__main__':
                 batch_size = 30
                 
                 if batch_i % 50 == 0:
-                    log(batch_i, u_loss.item(), u_loss_2.item())
+                    print(batch_i, u_loss.item(), u_loss_2.item())
 
                 if batch_i > 0 and batch_i % show_steps == 0:
                     srl_model.eval()
