@@ -17,6 +17,9 @@ def pad_batch(batch_data, batch_size, pad_int):
     max_length = max([len(item) for item in batch_data])
     return [item + [pad_int]*(max_length-len(item)) for item in batch_data]
 
+def capitalize(string, lower_rest=False):
+    return string[:1].upper() + (string[1:].lower() if lower_rest else string[1:])
+
 def convert_example_to_features(tokens, tokenizer):
     """Loads a data file into a list of `InputBatch`s."""
 
@@ -85,7 +88,7 @@ def convert_example_to_features(tokens, tokenizer):
 
 ## need for input: word, is_Predicate
 def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx, pretrain2idx, fr_pretrain2idx,
-              deprel2idx, argument2idx, idx2word, shuffle=False, lang="En", use_bert=False):
+              deprel2idx, argument2idx, idx2word, shuffle=False, lang="En", use_bert=False, para=False):
 
 
     role_number = len(argument2idx)
@@ -158,6 +161,8 @@ def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx,
         if use_bert:
             bert_inst_batch = []
             for sen in text_batch:
+                if para:
+                    sen[0] = capitalize(sen[0])
                 bert_inst_batch.append(convert_example_to_features(sen, tokenizer))
             bert_max_length = max([len(inst['input_ids']) for inst in bert_inst_batch])
             batch_length = len(pad_word_batch[0])

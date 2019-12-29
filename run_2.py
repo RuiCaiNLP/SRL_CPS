@@ -379,7 +379,7 @@ if __name__ == '__main__':
                 loss = criterion(out, target_batch_variable)
                 loss_word = criterion_word(out_word, target_batch_variable)
                 if batch_i % 50 == 0:
-                    print(batch_i, loss.item(), loss_word.item())
+                    print("epoch:", epoch, batch_i, loss.item(), loss_word.item())
                 optimizer.zero_grad()
                 (loss+loss_word).backward()
                 optimizer.step()
@@ -394,12 +394,12 @@ if __name__ == '__main__':
                                                                    fr_word2idx,
                                                                    lemma2idx, pos2idx, pretrain2idx, fr_pretrain2idx,
                                                                    deprel2idx, argument2idx, idx2word, shuffle=False,
-                                                                   lang="En", use_bert=True)
+                                                                   lang="En", use_bert=True, para=True)
                     unlabeled_Generator_Fr = inter_utils.get_batch(unlabeled_dataset_fr, batch_size, word2idx,
                                                                    fr_word2idx,
                                                                    lemma2idx, pos2idx, pretrain2idx, fr_pretrain2idx,
                                                                    deprel2idx, argument2idx, idx2word, shuffle=False,
-                                                                   lang="Fr",use_bert=True)
+                                                                   lang="Fr",use_bert=True, para=True)
                     unlabeled_data_en = next(unlabeled_Generator_En)
                     unlabeled_data_fr = next(unlabeled_Generator_Fr)
 
@@ -415,7 +415,7 @@ if __name__ == '__main__':
                 batch_size = 30
                 
                 if batch_i % 50 == 0:
-                    print(batch_i, u_loss.item(), u_loss_2.item())
+                    print("para loss:", batch_i, u_loss.item(), u_loss_2.item())
 
                 if batch_i > 0 and batch_i % show_steps == 0:
                     srl_model.eval()

@@ -270,17 +270,19 @@ class SR_Model(nn.Module):
         word_id_fr = get_torch_variable_from_np(unlabeled_data_fr['word_times'])
         word_id_emb_fr = self.id_embedding(word_id_fr).detach()
         flag_emb_fr = self.flag_embedding(flag_batch_fr).detach()
-        pretrain_emb_fr = self.fr_pretrained_embedding(pretrain_batch_fr).detach()
+        actual_lens_fr = unlabeled_data_fr['seq_len']
 
-        pretrain_batch = get_torch_variable_from_np(unlabeled_data_en['pretrain'])
+
+
         predicates_1D = unlabeled_data_en['predicates_idx']
         flag_batch = get_torch_variable_from_np(unlabeled_data_en['flag'])
         word_id = get_torch_variable_from_np(unlabeled_data_en['word_times'])
+        actual_lens_en = unlabeled_data_en['seq_len']
         word_id_emb = self.id_embedding(word_id)
         flag_emb = self.flag_embedding(flag_batch)
         seq_len = flag_emb.shape[1]
         seq_len_en = seq_len
-        pretrain_emb = self.pretrained_embedding(pretrain_batch).detach()
+
 
         if use_bert:
             bert_input_ids_fr = get_torch_variable_from_np(unlabeled_data_fr['bert_input_ids'])
@@ -291,6 +293,13 @@ class SR_Model(nn.Module):
             bert_emb_fr = bert_emb_fr[0]
             bert_emb_fr = bert_emb_fr[:, 1:-1, :].contiguous().detach()
             bert_emb_fr = bert_emb_fr[torch.arange(bert_emb_fr.size(0)).unsqueeze(-1), bert_out_positions_fr].detach()
+            for i in range(len(bert_emb_fr)):
+                if i >= len(actual_lens_fr):
+                    break
+                for j in range(len(bert_emb_fr[i])):
+                    if j >= actual_lens_fr[i]:
+                        bert_emb_fr[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
+            bert_emb_fr = bert_emb_fr.detach()
 
             bert_input_ids_en = get_torch_variable_from_np(unlabeled_data_en['bert_input_ids'])
             bert_input_mask_en = get_torch_variable_from_np(unlabeled_data_en['bert_input_mask'])
@@ -300,6 +309,13 @@ class SR_Model(nn.Module):
             bert_emb_en = bert_emb_en[0]
             bert_emb_en = bert_emb_en[:, 1:-1, :].contiguous().detach()
             bert_emb_en = bert_emb_en[torch.arange(bert_emb_fr.size(0)).unsqueeze(-1), bert_out_positions_en].detach()
+            for i in range(len(bert_emb_en)):
+                if i >= len(actual_lens_en):
+                    break
+                for j in range(len(bert_emb_en[i])):
+                    if j >= actual_lens_en[i]:
+                        bert_emb_en[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
+            bert_emb_en = bert_emb_en.detach()
 
 
         seq_len = flag_emb.shape[1]
