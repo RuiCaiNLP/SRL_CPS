@@ -110,7 +110,7 @@ class SR_Compressor(nn.Module):
                                     bidirectional=True,
                                     bias=True, batch_first=True)
 
-        self.bilstm_layer_bert = nn.LSTM(input_size=768 + self.target_vocab_size + 2*self.flag_emb_size,
+        self.bilstm_layer_bert = nn.LSTM(input_size=768 + self.target_vocab_size + 1*self.flag_emb_size,
                                          hidden_size=self.target_vocab_size * 10, num_layers=2,
                                          bidirectional=True,
                                          bias=True, batch_first=True)
@@ -131,7 +131,7 @@ class SR_Compressor(nn.Module):
                                                                                       self.bilstm_hidden_state_word)
             bilstm_output = bilstm_output_word.contiguous()
         else:
-            compress_input = torch.cat((word_emb, word_id_emb, flag_emb, SRL_input), 2)
+            compress_input = torch.cat((word_emb, flag_emb, SRL_input), 2)
             bilstm_output_bert, (_, bilstm_final_state_bert) = self.bilstm_layer_bert(compress_input,
                                                                                       self.bilstm_hidden_state_bert)
             bilstm_output = bilstm_output_bert.contiguous()
@@ -155,7 +155,7 @@ class SR_Matcher(nn.Module):
         self.bilstm_num_layers = model_params['bilstm_num_layers']
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
         self.compress_word = nn.Sequential(nn.Linear(300+2*self.flag_emb_size, 20), nn.ReLU())
-        self.compress_bert = nn.Sequential(nn.Linear(768+2*self.flag_emb_size, 20), nn.ReLU())
+        self.compress_bert = nn.Sequential(nn.Linear(768+1*self.flag_emb_size, 20), nn.ReLU())
         self.scorer = nn.Sequential(nn.Linear(40, 20),
                                     nn.ReLU(),
                                     nn.Linear(20, 1))
@@ -182,7 +182,7 @@ class SR_Matcher(nn.Module):
         if not use_bert:
             combine = self.compress_word(torch.cat((pretrained_emb, flag_emb, word_id_emb), 2))
         else:
-            combine = self.compress_bert(torch.cat((pretrained_emb, flag_emb, word_id_emb), 2))
+            combine = self.compress_bert(torch.cat((pretrained_emb, flag_emb), 2))
         combine = combine.unsqueeze(2).expand(self.batch_size, seq_len, self.target_vocab_size, 20)
         scores = self.scorer(torch.cat((role_hidden, combine), 3)).view(self.batch_size*seq_len, self.target_vocab_size)
 
