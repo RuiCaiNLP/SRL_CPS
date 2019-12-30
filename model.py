@@ -279,7 +279,7 @@ class SR_Model(nn.Module):
         word_id = get_torch_variable_from_np(unlabeled_data_en['word_times'])
         actual_lens_en = unlabeled_data_en['seq_len']
         word_id_emb = self.id_embedding(word_id)
-        flag_emb = self.flag_embedding(flag_batch)
+        flag_emb = self.flag_embedding(flag_batch).detach()
         seq_len = flag_emb.shape[1]
         seq_len_en = seq_len
 
@@ -308,7 +308,7 @@ class SR_Model(nn.Module):
             bert_emb_en = self.model(bert_input_ids_en, attention_mask=bert_input_mask_en)
             bert_emb_en = bert_emb_en[0]
             bert_emb_en = bert_emb_en[:, 1:-1, :].contiguous().detach()
-            bert_emb_en = bert_emb_en[torch.arange(bert_emb_fr.size(0)).unsqueeze(-1), bert_out_positions_en].detach()
+            bert_emb_en = bert_emb_en[torch.arange(bert_emb_en.size(0)).unsqueeze(-1), bert_out_positions_en].detach()
             for i in range(len(bert_emb_en)):
                 if i >= len(actual_lens_en):
                     break
