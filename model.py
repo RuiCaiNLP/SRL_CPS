@@ -278,6 +278,9 @@ class SR_Model(nn.Module):
                     NonNull_Predict += 1
                     if role in roles_en[i]:
                         In_NonNull_Predict += 1
+            if NonNull_Predict == 0:
+                coverages[i] = 0.0
+                continue
             P = In_NonNull_Predict/NonNull_Predict
             R = In_NonNull_Predict/NonNull_Truth
             F = 2 * P * R / (P + R)
@@ -386,7 +389,7 @@ class SR_Model(nn.Module):
         ## return the role coverage of parallel sentence B * T
         coverage_batch = self.role_coverage(output_word_en_en.view(self.batch_size, seq_len, -1),
                                             output_word_en_fr.view(self.batch_size, seq_len_fr, -1))
-        print(coverage_batch)
+
         unlabeled_loss_function = nn.KLDivLoss(size_average=False)
         output_word_en_en = F.softmax(output_word_en_en, dim=1).detach()
         output_word_fr_en = F.log_softmax(output_word_fr_en, dim=1)
@@ -395,7 +398,7 @@ class SR_Model(nn.Module):
         output_word_en_fr = F.softmax(output_word_en_fr, dim=1).detach()
         output_word_fr_fr = F.log_softmax(output_word_fr_fr, dim=1)
         loss_2 = unlabeled_loss_function(output_word_fr_fr, output_word_en_fr) / (seq_len_fr*self.batch_size)
-        return  loss, loss_2
+        return  loss, loss_2, coverage_batch
 
     def self_train_hidden(self, batch_input):
         unlabeled_data_en, unlabeled_data_fr = batch_input
