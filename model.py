@@ -259,30 +259,47 @@ class SR_Model(nn.Module):
         self.model.to(device)
         self.model.eval()
 
+    def role_coverage(self, output_en, output_fr):
+        _, roles_en = torch.max(output_en, 2)
+        _, roles_fr = torch.max(output_fr, 2)
+        coverages = [0.0]*self.batch_size
+        for i in range(self.batch_size):
+            NonNull_Truth = 0.0
+            NonNull_Predict = 0.0
+            In_NonNull_Predict = 0.0
+            for role in roles_en[i]:
+                if role > 1:
+                    NonNull_Truth += 1
+            if NonNull_Truth < 1:
+                coverages[i] = 0.0
+                continue
+            for role in roles_fr[i]:
+                if role > 1:
+                    NonNull_Predict += 1
+                    if role in roles_en[i]:
+                        In_NonNull_Predict += 1
+            P = In_NonNull_Predict/NonNull_Predict
+            R = In_NonNull_Predict/NonNull_Truth
+            F = 2 * P * R / (P + R)
+            coverages[i] = F
 
+        return coverages
 
     def parallel_train(self, batch_input, use_bert):
         unlabeled_data_en, unlabeled_data_fr = batch_input
 
-        pretrain_batch_fr = get_torch_variable_from_np(unlabeled_data_fr['pretrain'])
         predicates_1D_fr = unlabeled_data_fr['predicates_idx']
         flag_batch_fr = get_torch_variable_from_np(unlabeled_data_fr['flag'])
-        word_id_fr = get_torch_variable_from_np(unlabeled_data_fr['word_times'])
-        word_id_emb_fr = self.id_embedding(word_id_fr).detach()
+
         flag_emb_fr = self.flag_embedding(flag_batch_fr).detach()
         actual_lens_fr = unlabeled_data_fr['seq_len']
 
-
-
         predicates_1D = unlabeled_data_en['predicates_idx']
         flag_batch = get_torch_variable_from_np(unlabeled_data_en['flag'])
-        word_id = get_torch_variable_from_np(unlabeled_data_en['word_times'])
         actual_lens_en = unlabeled_data_en['seq_len']
-        word_id_emb = self.id_embedding(word_id)
         flag_emb = self.flag_embedding(flag_batch).detach()
         seq_len = flag_emb.shape[1]
         seq_len_en = seq_len
-
 
         if use_bert:
             bert_input_ids_fr = get_torch_variable_from_np(unlabeled_data_fr['bert_input_ids'])
@@ -293,8 +310,10 @@ class SR_Model(nn.Module):
             bert_emb_fr = bert_emb_fr[0]
             bert_emb_fr = bert_emb_fr[:, 1:-1, :].contiguous().detach()
             bert_emb_fr = bert_emb_fr[torch.arange(bert_emb_fr.size(0)).unsqueeze(-1), bert_out_positions_fr].detach()
+
             for i in range(len(bert_emb_fr)):
                 if i >= len(actual_lens_fr):
+                    print("error")
                     break
                 for j in range(len(bert_emb_fr[i])):
                     if j >= actual_lens_fr[i]:
@@ -309,8 +328,10 @@ class SR_Model(nn.Module):
             bert_emb_en = bert_emb_en[0]
             bert_emb_en = bert_emb_en[:, 1:-1, :].contiguous().detach()
             bert_emb_en = bert_emb_en[torch.arange(bert_emb_en.size(0)).unsqueeze(-1), bert_out_positions_en].detach()
+
             for i in range(len(bert_emb_en)):
                 if i >= len(actual_lens_en):
+                    print("error")
                     break
                 for j in range(len(bert_emb_en[i])):
                     if j >= actual_lens_en[i]:
@@ -323,7 +344,7 @@ class SR_Model(nn.Module):
 
         SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
         pred_recur = self.SR_Compressor(SRL_input.detach(), bert_emb_en,
-                                        flag_emb.detach(), word_id_emb.detach(), predicates_1D, seq_len, para=True, use_bert=True)
+                                        flag_emb.detach(), None, predicates_1D, seq_len, para=True, use_bert=True)
 
 
 
@@ -332,41 +353,48 @@ class SR_Model(nn.Module):
 
         SRL_input_fr = SRL_output_fr.view(self.batch_size, seq_len_fr, -1)
         pred_recur_fr = self.SR_Compressor(SRL_input_fr, bert_emb_fr,
-                                        flag_emb_fr.detach(), word_id_emb_fr, predicates_1D_fr, seq_len_fr, para=True, use_bert=True)
+                                        flag_emb_fr.detach(), None, predicates_1D_fr, seq_len_fr, para=True, use_bert=True)
 
         #L2_loss_function = nn.MSELoss(size_average=False)
         #l2_loss = L2_loss_function(pred_recur_fr, pred_recur.detach())/self.batch_size
         """
         En event vector, En word
         """
-        output_word_en = self.SR_Matcher(pred_recur.detach(), bert_emb_en, flag_emb.detach(), word_id_emb.detach(), seq_len,
+        output_word_en_en = self.SR_Matcher(pred_recur.detach(), bert_emb_en, flag_emb.detach(), None, seq_len,
                                          para=True, use_bert=True)
 
         #############################################
         """
         Fr event vector, En word
         """
-        output_word_fr = self.SR_Matcher(pred_recur_fr, bert_emb_en, flag_emb.detach(), word_id_emb.detach(), seq_len,
+        output_word_fr_en = self.SR_Matcher(pred_recur_fr, bert_emb_en, flag_emb.detach(), None, seq_len,
                                       para=True, use_bert=True)
-        unlabeled_loss_function = nn.KLDivLoss(size_average=False)
-        output_word_en = F.softmax(output_word_en, dim=1).detach()
-        output_word_fr = F.log_softmax(output_word_fr, dim=1)
-        loss = unlabeled_loss_function(output_word_fr, output_word_en)/(seq_len_en*self.batch_size)
+
         #############################################3
         """
         En event vector, Fr word
         """
-        output_word_en = self.SR_Matcher(pred_recur.detach(), bert_emb_fr, flag_emb_fr.detach(), word_id_emb_fr.detach(), seq_len_fr,
+        output_word_en_fr = self.SR_Matcher(pred_recur.detach(), bert_emb_fr, flag_emb_fr.detach(), None, seq_len_fr,
                                          para=True, use_bert=True)
         """
         Fr event vector, Fr word
         """
-        output_word_fr = self.SR_Matcher(pred_recur_fr, bert_emb_fr, flag_emb_fr.detach(), word_id_emb_fr.detach(), seq_len_fr,
+        output_word_fr_fr = self.SR_Matcher(pred_recur_fr, bert_emb_fr, flag_emb_fr.detach(), None, seq_len_fr,
                                          para=True, use_bert=True)
+
+
+        ## return the role coverage of parallel sentence B * T
+        coverage_batch = self.role_coverage(output_word_en_en.view(self.batch_size, seq_len, -1),
+                                            output_word_en_fr.view(self.batch_size, seq_len_fr, -1))
+        print(coverage_batch)
         unlabeled_loss_function = nn.KLDivLoss(size_average=False)
-        output_word_en = F.softmax(output_word_en, dim=1).detach()
-        output_word_fr = F.log_softmax(output_word_fr, dim=1)
-        loss_2 = unlabeled_loss_function(output_word_fr, output_word_en) / (seq_len_fr*self.batch_size)
+        output_word_en_en = F.softmax(output_word_en_en, dim=1).detach()
+        output_word_fr_en = F.log_softmax(output_word_fr_en, dim=1)
+        loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en) / (seq_len_en * self.batch_size)
+
+        output_word_en_fr = F.softmax(output_word_en_fr, dim=1).detach()
+        output_word_fr_fr = F.log_softmax(output_word_fr_fr, dim=1)
+        loss_2 = unlabeled_loss_function(output_word_fr_fr, output_word_en_fr) / (seq_len_fr*self.batch_size)
         return  loss, loss_2
 
     def self_train_hidden(self, batch_input):

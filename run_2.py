@@ -357,11 +357,11 @@ if __name__ == '__main__':
         unlabeled_Generator_En = inter_utils.get_batch(unlabeled_dataset_en, batch_size, word2idx, fr_word2idx,
                                                        lemma2idx, pos2idx, pretrain2idx, fr_pretrain2idx,
                                                        deprel2idx, argument2idx, idx2word, shuffle=False,
-                                                       lang="En", use_bert=use_bert)
+                                                       lang="En", use_bert=use_bert, para=True)
         unlabeled_Generator_Fr = inter_utils.get_batch(unlabeled_dataset_fr, batch_size, word2idx, fr_word2idx,
                                                        lemma2idx, pos2idx, pretrain2idx, fr_pretrain2idx,
                                                        deprel2idx, argument2idx, idx2word, shuffle=False,
-                                                       lang="Fr", use_bert=use_bert)
+                                                       lang="Fr", use_bert=use_bert, para=True)
 
         for epoch in range(30):
 
@@ -409,10 +409,10 @@ if __name__ == '__main__':
                 
                 u_loss_pair, loss_word, = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True,
                                                     self_constrain=False, use_bert=use_bert)
-                optimizer_para.zero_grad()
+                optimizer.zero_grad()
                 u_loss, u_loss_2 = u_loss_pair
                 (u_loss + u_loss_2).backward()
-                optimizer_para.step()
+                optimizer.step()
                 batch_size = 30
                 
                 if batch_i % 50 == 0:
