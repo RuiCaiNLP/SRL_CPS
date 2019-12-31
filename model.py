@@ -278,7 +278,7 @@ class SR_Model(nn.Module):
                     NonNull_Predict += 1
                     if role in roles_en[i]:
                         In_NonNull_Predict += 1
-            if NonNull_Predict == 0:
+            if In_NonNull_Predict == 0 or NonNull_Predict==0:
                 coverages[i] = 0.0
                 continue
             P = In_NonNull_Predict/NonNull_Predict
