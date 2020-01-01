@@ -288,6 +288,44 @@ class SR_Model(nn.Module):
 
         return coverages
 
+    #for En sentence, loss I
+    #if Fr event vector find an En word which could output same argument with an Fr word,
+    # think this En word should be Ax. Then, we need to ask the opinion of En event vector about this En word
+    def P_word_mask(self, output_fr_en, output_fr_fr, seq_len_en):
+        word_mask = np.zeros((self.batch_size, seq_len_en), dtype="float32")
+        _, roles_fr_en = torch.max(output_fr_en, 2)
+        _, roles_fr_fr = torch.max(output_fr_fr, 2)
+        for i in range(self.batch_size):
+            fr_roles_set = []
+            for role in roles_fr_fr[i]:
+                if role not in fr_roles_set:
+                    fr_roles_set.append(role)
+            for j in range(seq_len_en):
+                if roles_fr_en[i][j] < 2:
+                    continue
+                elif roles_fr_en[i][j] in fr_roles_set:
+                    word_mask[i][j] = 1.0
+        return word_mask
+
+    # for Fr sentence, loss II
+    # if En event vector find an Fr word which could output same argument with an En word,
+    # think this Fr word should be Ax. Then, we need to check the opinion of Fr event vector about this Fr word
+    def R_word_mask(self, output_en_en, output_en_fr, seq_len_fr):
+        word_mask = np.zeros((self.batch_size, seq_len_fr), dtype="float32")
+        _, roles_en_en = torch.max(output_en_en, 2)
+        _, roles_en_fr = torch.max(output_en_fr, 2)
+        for i in range(self.batch_size):
+            en_roles_set = []
+            for role in roles_en_en[i]:
+                if role not in en_roles_set:
+                    en_roles_set.append(role)
+            for j in range(seq_len_fr):
+                if roles_en_fr[i][j] < 2:
+                    continue
+                elif roles_en_fr[i][j] in en_roles_set:
+                    word_mask[i][j] = 1.0
+        return word_mask
+
     def parallel_train(self, batch_input, use_bert):
         unlabeled_data_en, unlabeled_data_fr = batch_input
 
@@ -390,14 +428,31 @@ class SR_Model(nn.Module):
         coverage_batch = self.role_coverage(output_word_en_en.view(self.batch_size, seq_len, -1),
                                             output_word_en_fr.view(self.batch_size, seq_len_fr, -1))
 
-        unlabeled_loss_function = nn.KLDivLoss(size_average=False)
+        unlabeled_loss_function = nn.KLDivLoss(reduction='none')
+        word_mask_4en = self.P_word_mask(output_word_fr_en.view(self.batch_size, seq_len, -1),
+                                         output_word_fr_fr.view(self.batch_size, seq_len_fr, -1), seq_len_en)
+        word_mask_4en_tensor = get_torch_variable_from_np(word_mask_4en).view(self.batch_size*seq_len_en, -1)
+
+        word_mask_4fr = self.R_word_mask(output_word_en_en.view(self.batch_size, seq_len, -1),
+                                         output_word_en_fr.view(self.batch_size, seq_len_fr, -1), seq_len_fr)
+        word_mask_4fr_tensor = get_torch_variable_from_np(word_mask_4fr).view(self.batch_size*seq_len_fr, -1)
+
         output_word_en_en = F.softmax(output_word_en_en, dim=1).detach()
         output_word_fr_en = F.log_softmax(output_word_fr_en, dim=1)
-        loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en) / (seq_len_en * self.batch_size)
+
+        loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en)*word_mask_4en_tensor
+        if word_mask_4en.sum() > 0:
+            loss = loss.sum() / word_mask_4en_tensor.sum()
+        else:
+            loss = loss.sum()
 
         output_word_en_fr = F.softmax(output_word_en_fr, dim=1).detach()
         output_word_fr_fr = F.log_softmax(output_word_fr_fr, dim=1)
-        loss_2 = unlabeled_loss_function(output_word_fr_fr, output_word_en_fr) / (seq_len_fr*self.batch_size)
+        loss_2 = unlabeled_loss_function(output_word_fr_fr, output_word_en_fr)*word_mask_4fr_tensor
+        if word_mask_4fr.sum() > 0:
+            loss_2 = loss_2.sum()/ word_mask_4fr_tensor.sum()
+        else:
+            loss_2 = loss_2.sum()
         return  loss, loss_2, coverage_batch
 
     def self_train_hidden(self, batch_input):
