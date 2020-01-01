@@ -292,8 +292,7 @@ class SR_Model(nn.Module):
     #if Fr event vector find an En word which could output same argument with an Fr word,
     # think this En word should be Ax. Then, we need to ask the opinion of En event vector about this En word
     def P_word_mask(self, output_fr_en, output_fr_fr, seq_len_en):
-        word_mask = np.ones((self.batch_size, seq_len_en), dtype="float32")
-        return word_mask
+        word_mask = np.zeros((self.batch_size, seq_len_en), dtype="float32")
         _, roles_fr_en = torch.max(output_fr_en, 2)
         _, roles_fr_fr = torch.max(output_fr_fr, 2)
         for i in range(self.batch_size):
@@ -312,8 +311,7 @@ class SR_Model(nn.Module):
     # if En event vector find an Fr word which could output same argument with an En word,
     # think this Fr word should be Ax. Then, we need to check the opinion of Fr event vector about this Fr word
     def R_word_mask(self, output_en_en, output_en_fr, seq_len_fr):
-        word_mask = np.ones((self.batch_size, seq_len_fr), dtype="float32")
-        return word_mask
+        word_mask = np.zeros((self.batch_size, seq_len_fr), dtype="float32")
         _, roles_en_en = torch.max(output_en_en, 2)
         _, roles_en_fr = torch.max(output_en_fr, 2)
         for i in range(self.batch_size):
@@ -444,7 +442,7 @@ class SR_Model(nn.Module):
 
         loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en)*word_mask_4en_tensor
         if word_mask_4en.sum() > 0:
-            loss = loss.sum() / word_mask_4en_tensor.sum()
+            loss = loss.sum() / (self.batch_size*seq_len_en)
         else:
             loss = loss.sum()
 
@@ -452,7 +450,7 @@ class SR_Model(nn.Module):
         output_word_fr_fr = F.log_softmax(output_word_fr_fr, dim=1)
         loss_2 = unlabeled_loss_function(output_word_fr_fr, output_word_en_fr)*word_mask_4fr_tensor
         if word_mask_4fr.sum() > 0:
-            loss_2 = loss_2.sum()/ word_mask_4fr_tensor.sum()
+            loss_2 = loss_2.sum()/ (self.batch_size*seq_len_fr)
         else:
             loss_2 = loss_2.sum()
         return  loss, loss_2, coverage_batch
