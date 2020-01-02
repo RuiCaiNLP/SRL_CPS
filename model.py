@@ -288,11 +288,27 @@ class SR_Model(nn.Module):
 
         return coverages
 
+    def copy_loss(self, output_SRL, flag_emb, pretrain_emb, seq_len):
+        SRL_input = output_SRL.view(self.batch_size, seq_len, -1)
+        SRL_input = SRL_input.detach()
+        pred_recur = self.SR_Compressor(SRL_input, pretrain_emb,
+                                        flag_emb.detach(), None, None, seq_len, para=False)
+
+        output_word = self.SR_Matcher(pred_recur, pretrain_emb, flag_emb.detach(), None, seq_len,
+                                      para=False)
+        teacher = F.softmax(SRL_input, dim=2).detach()
+        student = F.log_softmax(output_word, dim=2)
+        unlabeled_loss_function = nn.KLDivLoss(reduction='none')
+        loss = unlabeled_loss_function(student, teacher)
+        loss = loss.sum() / (self.batch_size * seq_len)
+        return loss
+
     #for En sentence, loss I
     #if Fr event vector find an En word which could output same argument with an Fr word,
     # think this En word should be Ax. Then, we need to ask the opinion of En event vector about this En word
     def P_word_mask(self, output_fr_en, output_fr_fr, seq_len_en):
-        word_mask = np.zeros((self.batch_size, seq_len_en), dtype="float32")
+        word_mask = np.ones((self.batch_size, seq_len_en), dtype="float32")
+        return word_mask
         _, roles_fr_en = torch.max(output_fr_en, 2)
         _, roles_fr_fr = torch.max(output_fr_fr, 2)
         for i in range(self.batch_size):
@@ -311,7 +327,8 @@ class SR_Model(nn.Module):
     # if En event vector find an Fr word which could output same argument with an En word,
     # think this Fr word should be Ax. Then, we need to check the opinion of Fr event vector about this Fr word
     def R_word_mask(self, output_en_en, output_en_fr, seq_len_fr):
-        word_mask = np.zeros((self.batch_size, seq_len_fr), dtype="float32")
+        word_mask = np.ones((self.batch_size, seq_len_fr), dtype="float32")
+        return word_mask
         _, roles_en_en = torch.max(output_en_en, 2)
         _, roles_en_fr = torch.max(output_en_fr, 2)
         for i in range(self.batch_size):
@@ -395,9 +412,8 @@ class SR_Model(nn.Module):
         SRL_input_fr = SRL_output_fr.view(self.batch_size, seq_len_fr, -1)
         pred_recur_fr = self.SR_Compressor(SRL_input_fr, bert_emb_fr,
                                         flag_emb_fr.detach(), None, predicates_1D_fr, seq_len_fr, para=True, use_bert=True)
+        copy_loss_fr = self.copy_loss(SRL_input_fr, flag_emb_fr, bert_emb_fr, seq_len_fr)
 
-        #L2_loss_function = nn.MSELoss(size_average=False)
-        #l2_loss = L2_loss_function(pred_recur_fr, pred_recur.detach())/self.batch_size
         """
         En event vector, En word
         """
@@ -425,8 +441,8 @@ class SR_Model(nn.Module):
 
 
         ## return the role coverage of parallel sentence B * T
-        coverage_batch = self.role_coverage(output_word_en_en.view(self.batch_size, seq_len, -1),
-                                            output_word_en_fr.view(self.batch_size, seq_len_fr, -1))
+        #coverage_batch = self.role_coverage(output_word_en_en.view(self.batch_size, seq_len, -1),
+        #                                    output_word_en_fr.view(self.batch_size, seq_len_fr, -1))
 
         unlabeled_loss_function = nn.KLDivLoss(reduction='none')
         word_mask_4en = self.P_word_mask(output_word_fr_en.view(self.batch_size, seq_len, -1),
@@ -453,8 +469,9 @@ class SR_Model(nn.Module):
             loss_2 = loss_2.sum()/ (self.batch_size*seq_len_fr)
         else:
             loss_2 = loss_2.sum()
-        return  loss, loss_2, coverage_batch
+        return  loss, loss_2, copy_loss_fr
 
+    """
     def self_train_hidden(self, batch_input):
         unlabeled_data_en, unlabeled_data_fr = batch_input
 
@@ -514,9 +531,7 @@ class SR_Model(nn.Module):
                                         flag_emb.detach(), word_id_emb.detach(), predicates_1D, seq_len, para=True)
         seq_len_fr = flag_emb_fr.shape[1]
 
-        """
-        En event vector, En word
-        """
+     
         output_word_en = self.SR_Matcher(pred_recur, pretrain_emb, flag_emb.detach(), word_id_emb.detach(),
                                          seq_len,
                                          para=True)
@@ -526,10 +541,6 @@ class SR_Model(nn.Module):
         # B R
         max_role_en = torch.max(output_word_en, dim=1)[0].detach()
 
-
-        """
-        En event vector, Fr word
-        """
         output_word_fr= self.SR_Matcher(pred_recur, pretrain_emb_fr, flag_emb_fr.detach(),
                                          word_id_emb_fr.detach(), seq_len_fr,
                                          para=True)
@@ -542,7 +553,7 @@ class SR_Model(nn.Module):
 
         return loss
 
-
+    """
 
 
     def forward(self, batch_input, lang='En', unlabeled=False, self_constrain=False, use_bert=False):
@@ -605,6 +616,7 @@ class SR_Model(nn.Module):
                                             flag_emb.detach(), word_id_emb, predicates_1D, seq_len, para=False)
 
             output_word = self.SR_Matcher(pred_recur, pretrain_emb, flag_emb.detach(), word_id_emb.detach(), seq_len, para=False)
+
         else:
             SRL_output = self.SR_Labeler(bert_emb, flag_emb, predicates_1D, seq_len, para=False, use_bert=True)
 
@@ -615,8 +627,9 @@ class SR_Model(nn.Module):
 
             output_word = self.SR_Matcher(pred_recur, bert_emb, flag_emb.detach(), word_id_emb.detach(), seq_len,
                                           para=False, use_bert=True)
+            copy_loss = self.copy_loss(SRL_input, flag_emb, bert_emb, seq_len)
 
-        return SRL_output, output_word
+        return SRL_output, output_word, copy_loss
 
 
 

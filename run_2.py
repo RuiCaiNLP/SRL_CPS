@@ -374,19 +374,20 @@ if __name__ == '__main__':
                 flat_argument = train_input_data['flat_argument']
                 target_batch_variable = get_torch_variable_from_np(flat_argument)
 
-                out, out_word = srl_model(train_input_data, lang='En', use_bert=use_bert)
+                out, out_word, copy_loss = srl_model(train_input_data, lang='En', use_bert=use_bert)
                 #_,  prediction_batch_variable = torch.max(out, 1)
                 loss = criterion(out, target_batch_variable)
                 loss_word = criterion_word(out_word, target_batch_variable)
                 if batch_i % 50 == 0:
-                    print("epoch:", epoch, batch_i, loss.item(), loss_word.item())
+                    print("epoch:", epoch, batch_i, loss.item(), loss_word.item(), copy_loss.item())
                 optimizer.zero_grad()
-                (loss+loss_word).backward()
+                (loss+loss_word+copy_loss).backward()
                 optimizer.step()
 
 
 
                 #batch_size=1
+                """
                 try:
                     unlabeled_data_en = next(unlabeled_Generator_En)
                     unlabeled_data_fr = next(unlabeled_Generator_Fr)
@@ -415,10 +416,11 @@ if __name__ == '__main__':
                 optimizer.step()
                 batch_size = 30
                 
+                
                 if batch_i % 50 == 0:
                     print("para loss:", batch_i, u_loss.item(), u_loss_2.item())
                     #print(coverage)
-
+                """
                 if batch_i > 0 and batch_i % show_steps == 0:
                     srl_model.eval()
                     _, pred = torch.max(out, 1)
