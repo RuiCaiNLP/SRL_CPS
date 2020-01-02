@@ -412,7 +412,7 @@ class SR_Model(nn.Module):
         SRL_input_fr = SRL_output_fr.view(self.batch_size, seq_len_fr, -1)
         pred_recur_fr = self.SR_Compressor(SRL_input_fr, bert_emb_fr,
                                         flag_emb_fr.detach(), None, predicates_1D_fr, seq_len_fr, para=True, use_bert=True)
-        copy_loss_fr = self.copy_loss(SRL_input_fr, flag_emb_fr, bert_emb_fr, seq_len_fr)
+        copy_loss_fr = self.copy_loss(SRL_input_fr, flag_emb_fr, bert_emb_fr, seq_len_fr, use_bert=True)
 
         """
         En event vector, En word
