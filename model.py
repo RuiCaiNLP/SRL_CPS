@@ -292,10 +292,10 @@ class SR_Model(nn.Module):
         SRL_input = output_SRL.view(self.batch_size, seq_len, -1)
         SRL_input = SRL_input.detach()
         pred_recur = self.SR_Compressor(SRL_input, pretrain_emb,
-                                        flag_emb.detach(), None, None, seq_len, para=False)
+                                        flag_emb.detach(), None, None, seq_len, para=False, use_bert=True)
 
         output_word = self.SR_Matcher(pred_recur, pretrain_emb, flag_emb.detach(), None, seq_len,
-                                      para=False)
+                                      para=False, use_bert=True)
         teacher = F.softmax(SRL_input, dim=2).detach()
         student = F.log_softmax(output_word, dim=2)
         unlabeled_loss_function = nn.KLDivLoss(reduction='none')
