@@ -381,7 +381,7 @@ if __name__ == '__main__':
                 if batch_i % 50 == 0:
                     print("epoch:", epoch, batch_i, loss.item(), loss_word.item(), copy_loss.item())
                 optimizer.zero_grad()
-                (loss+loss_word+copy_loss).backward()
+                (loss+copy_loss).backward()
                 optimizer.step()
 
 
