@@ -296,8 +296,8 @@ class SR_Model(nn.Module):
 
         output_word = self.SR_Matcher(pred_recur, pretrain_emb, flag_emb.detach(), None, seq_len,
                                       para=False, use_bert=True)
-        teacher = F.softmax(output_SRL.view(self.batch_size*seq_len, 1), dim=1).detach()
-        student = F.log_softmax(output_word.view(self.batch_size*seq_len, 1), dim=1)
+        teacher = F.softmax(output_SRL.view(self.batch_size*seq_len, -1), dim=1).detach()
+        student = F.log_softmax(output_word.view(self.batch_size*seq_len, -1), dim=1)
         unlabeled_loss_function = nn.KLDivLoss(reduction='none')
         loss = unlabeled_loss_function(student, teacher)
         loss = loss.sum() / (self.batch_size * seq_len)
