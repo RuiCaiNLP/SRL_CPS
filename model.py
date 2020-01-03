@@ -345,7 +345,11 @@ class SR_Model(nn.Module):
             if found_already:
                 break
 
-            if en_role_set != fr_role_set:
+            for a, b in zip(en_role_set[2:], fr_role_set[2:]):
+                if a*b<0:
+                    found_already = True
+                    break
+            if found_already:
                 break
 
             for id in en_role_set:
