@@ -330,12 +330,16 @@ class SR_Model(nn.Module):
         _, roles_en_en = torch.max(output_en_en, 2)
         for i in range(self.batch_size):
             en_role_set = [-1]*self.target_vocab_size
+            all_null = True
             for id, role in enumerate(roles_en_en[i]):
                 if role > 1:
+                    all_null = False
                     en_role_set[role] = id
             fr_role_set = [-1] * self.target_vocab_size
-
+            if all_null:
+                break
             found_already = False
+
             for id, role in enumerate(roles_en_fr[i]):
                 if role > 1:
                     if fr_role_set[role] != -1:
@@ -355,8 +359,8 @@ class SR_Model(nn.Module):
             if found_already:
                 break
 
-            word_mask_en = np.ones((self.batch_size, seq_len_en), dtype="float32")
-            word_mask_fr = np.ones((self.batch_size, seq_len_fr), dtype="float32")
+            word_mask_en[i] = np.ones((seq_len_en,), dtype="float32")
+            word_mask_fr[i] = np.ones((seq_len_fr,), dtype="float32")
 
             """
             for id in en_role_set:
