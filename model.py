@@ -324,9 +324,8 @@ class SR_Model(nn.Module):
         return word_mask
 
     def word_mask(self,output_en_en, output_en_fr, seq_len_en, seq_len_fr):
-        word_mask_en = np.ones((self.batch_size, seq_len_en), dtype="float32")
-        word_mask_fr = np.ones((self.batch_size, seq_len_fr), dtype="float32")
-        return word_mask_en, word_mask_fr
+        word_mask_en = np.zeros((self.batch_size, seq_len_en), dtype="float32")
+        word_mask_fr = np.zeros((self.batch_size, seq_len_fr), dtype="float32")
         _, roles_en_fr = torch.max(output_en_fr, 2)
         _, roles_en_en = torch.max(output_en_en, 2)
         for i in range(self.batch_size):
@@ -337,8 +336,8 @@ class SR_Model(nn.Module):
                     all_null = False
                     en_role_set[role] = id
             fr_role_set = [-1] * self.target_vocab_size
-            #if all_null:
-            #    break
+            if all_null:
+                continue
             found_already = False
 
             for id, role in enumerate(roles_en_fr[i]):
@@ -348,7 +347,7 @@ class SR_Model(nn.Module):
                         break
                     fr_role_set[role] = id
             if found_already:
-                break
+                continue
 
             for a, b in zip(en_role_set[2:], fr_role_set[2:]):
                 if a==-1 and b>=0:
@@ -358,7 +357,7 @@ class SR_Model(nn.Module):
                     found_already = True
                     break
             if found_already:
-                break
+                continue
 
             word_mask_en[i] = np.ones((seq_len_en,), dtype="float32")
             word_mask_fr[i] = np.ones((seq_len_fr,), dtype="float32")
@@ -506,7 +505,7 @@ class SR_Model(nn.Module):
                                          output_word_en_fr.view(self.batch_size, seq_len_fr, -1), seq_len_fr)
         word_mask_4fr_tensor = get_torch_variable_from_np(word_mask_4fr).view(self.batch_size*seq_len_fr, -1)
         """
-        word_mask_en, word_mask_fr = self.word_mask(output_word_en_en.view(self.batch_size, seq_len, -1),
+        word_mask_en, word_mask_fr = self.word_mask(output_word_en_en.view(self.batch_size, seq_len_en, -1),
                                                     output_word_en_fr.view(self.batch_size, seq_len_fr, -1),
                                                     seq_len_en, seq_len_fr)
         word_mask_en_tensor = get_torch_variable_from_np(word_mask_en).view(self.batch_size * seq_len_en, -1)
