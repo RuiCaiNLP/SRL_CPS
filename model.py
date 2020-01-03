@@ -346,18 +346,26 @@ class SR_Model(nn.Module):
                 break
 
             for a, b in zip(en_role_set[2:], fr_role_set[2:]):
-                if a*b<0:
+                if a==-1 and b>=0:
+                    found_already = True
+                    break
+                if a>=0 and b==-1:
                     found_already = True
                     break
             if found_already:
                 break
 
+            word_mask_en = np.ones((self.batch_size, seq_len_en), dtype="float32")
+            word_mask_fr = np.ones((self.batch_size, seq_len_fr), dtype="float32")
+
+            """
             for id in en_role_set:
                 if id!=-1:
                     word_mask_en[i][id] = 1.0
             for id in fr_role_set:
                 if id != -1:
                     word_mask_fr[i][id] = 1.0
+            """
         return word_mask_en, word_mask_fr
 
 
