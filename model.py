@@ -336,8 +336,8 @@ class SR_Model(nn.Module):
                     all_null = False
                     en_role_set[role] = id
             fr_role_set = [-1] * self.target_vocab_size
-            if all_null:
-                break
+            #if all_null:
+            #    break
             found_already = False
 
             for id, role in enumerate(roles_en_fr[i]):
