@@ -307,8 +307,8 @@ class SR_Model(nn.Module):
     #if Fr event vector find an En word which could output same argument with an Fr word,
     # think this En word should be Ax. Then, we need to ask the opinion of En event vector about this En word
     def P_word_mask(self, output_fr_en, output_fr_fr, seq_len_en):
-        word_mask = np.ones((self.batch_size, seq_len_en), dtype="float32")
-        return word_mask
+        word_mask = np.zeros((self.batch_size, seq_len_en), dtype="float32")
+
         _, roles_fr_en = torch.max(output_fr_en, 2)
         _, roles_fr_fr = torch.max(output_fr_fr, 2)
         for i in range(self.batch_size):
@@ -327,8 +327,8 @@ class SR_Model(nn.Module):
     # if En event vector find an Fr word which could output same argument with an En word,
     # think this Fr word should be Ax. Then, we need to check the opinion of Fr event vector about this Fr word
     def R_word_mask(self, output_en_en, output_en_fr, seq_len_fr):
-        word_mask = np.ones((self.batch_size, seq_len_fr), dtype="float32")
-        return word_mask
+        word_mask = np.zeros((self.batch_size, seq_len_fr), dtype="float32")
+
         _, roles_en_en = torch.max(output_en_en, 2)
         _, roles_en_fr = torch.max(output_en_fr, 2)
         for i in range(self.batch_size):

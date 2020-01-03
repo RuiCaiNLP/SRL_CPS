@@ -412,7 +412,7 @@ if __name__ == '__main__':
                                                     self_constrain=False, use_bert=use_bert)
                 optimizer.zero_grad()
                 u_loss, u_loss_2, copy_loss = u_loss_pair
-                copy_loss.backward()
+                (u_loss + u_loss_2 + copy_loss).backward()
                 optimizer.step()
                 batch_size = 30
                 
