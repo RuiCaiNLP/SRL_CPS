@@ -381,7 +381,7 @@ if __name__ == '__main__':
                 if batch_i % 50 == 0:
                     print("epoch:", epoch, batch_i, loss.item(), loss_word.item(), copy_loss.item())
                 optimizer.zero_grad()
-                (loss+loss_word + copy_loss).backward()
+                (loss + loss_word).backward()
                 optimizer.step()
 
 
@@ -412,7 +412,7 @@ if __name__ == '__main__':
                                                     self_constrain=False, use_bert=use_bert)
                 optimizer.zero_grad()
                 u_loss, u_loss_2, copy_loss = u_loss_pair
-                (u_loss + u_loss_2 + copy_loss).backward()
+                (u_loss + u_loss_2).backward()
                 optimizer.step()
                 batch_size = 30
                 

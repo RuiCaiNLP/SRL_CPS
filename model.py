@@ -155,7 +155,7 @@ class SR_Matcher(nn.Module):
         self.bilstm_num_layers = model_params['bilstm_num_layers']
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
         self.compress_word = nn.Sequential(nn.Linear(300+2*self.flag_emb_size, 20), nn.ReLU())
-        self.compress_bert = nn.Sequential(nn.Linear(768+1*self.flag_emb_size, 20), nn.ReLU())
+        self.compress_bert = nn.Sequential(nn.Linear(768+0*self.flag_emb_size, 20), nn.ReLU())
         self.scorer = nn.Sequential(nn.Linear(40, 20),
                                     nn.ReLU(),
                                     nn.Linear(20, 1))
@@ -180,9 +180,9 @@ class SR_Matcher(nn.Module):
         role_hidden = torch.cat((forward_hidden, backward_hidden), 2)
         role_hidden = role_hidden.unsqueeze(1).expand(self.batch_size, seq_len, self.target_vocab_size, 20)
         if not use_bert:
-            combine = self.compress_word(torch.cat((pretrained_emb, flag_emb, word_id_emb), 2))
+            combine = self.compress_word(torch.cat((pretrained_emb,  word_id_emb), 2))
         else:
-            combine = self.compress_bert(torch.cat((pretrained_emb, flag_emb), 2))
+            combine = self.compress_bert(pretrained_emb)
         combine = combine.unsqueeze(2).expand(self.batch_size, seq_len, self.target_vocab_size, 20)
         scores = self.scorer(torch.cat((role_hidden, combine), 3)).view(self.batch_size*seq_len, self.target_vocab_size)
 
@@ -323,6 +323,41 @@ class SR_Model(nn.Module):
                     word_mask[i][j] = 1.0
         return word_mask
 
+    def word_mask(self,output_en_en, output_en_fr, seq_len_en, seq_len_fr):
+        word_mask_en = np.zeros((self.batch_size, seq_len_en), dtype="float32")
+        word_mask_fr = np.zeros((self.batch_size, seq_len_fr), dtype="float32")
+        _, roles_en_fr = torch.max(output_en_fr, 2)
+        _, roles_en_en = torch.max(output_en_en, 2)
+        for i in range(self.batch_size):
+            en_role_set = [-1]*self.target_vocab_size
+            for id, role in enumerate(roles_en_en[i]):
+                if role > 1:
+                    en_role_set[role] = id
+            fr_role_set = [-1] * self.target_vocab_size
+
+            found_already = False
+            for id, role in enumerate(roles_en_fr[i]):
+                if role > 1:
+                    if fr_role_set[role] != -1:
+                        found_already=True
+                        break
+                    fr_role_set[role] = id
+            if found_already:
+                break
+
+            if en_role_set != fr_role_set:
+                break
+
+            for id in en_role_set:
+                if id!=-1:
+                    word_mask_en[i][id] = 1.0
+            for id in fr_role_set:
+                if id != -1:
+                    word_mask_fr[i][id] = 1.0
+        return word_mask_en, word_mask_fr
+
+
+
     # for Fr sentence, loss II
     # if En event vector find an Fr word which could output same argument with an En word,
     # think this Fr word should be Ax. Then, we need to check the opinion of Fr event vector about this Fr word
@@ -412,7 +447,7 @@ class SR_Model(nn.Module):
         SRL_input_fr = SRL_output_fr.view(self.batch_size, seq_len_fr, -1)
         pred_recur_fr = self.SR_Compressor(SRL_input_fr, bert_emb_fr,
                                         flag_emb_fr.detach(), None, predicates_1D_fr, seq_len_fr, para=True, use_bert=True)
-        copy_loss_fr = self.copy_loss(SRL_input_fr, flag_emb_fr, bert_emb_fr, seq_len_fr)
+        copy_loss_fr = 0#self.copy_loss(SRL_input_fr, flag_emb_fr, bert_emb_fr, seq_len_fr)
 
         """
         En event vector, En word
@@ -445,6 +480,7 @@ class SR_Model(nn.Module):
         #                                    output_word_en_fr.view(self.batch_size, seq_len_fr, -1))
 
         unlabeled_loss_function = nn.KLDivLoss(reduction='none')
+        """
         word_mask_4en = self.P_word_mask(output_word_fr_en.view(self.batch_size, seq_len, -1),
                                          output_word_fr_fr.view(self.batch_size, seq_len_fr, -1), seq_len_en)
         word_mask_4en_tensor = get_torch_variable_from_np(word_mask_4en).view(self.batch_size*seq_len_en, -1)
@@ -452,20 +488,26 @@ class SR_Model(nn.Module):
         word_mask_4fr = self.R_word_mask(output_word_en_en.view(self.batch_size, seq_len, -1),
                                          output_word_en_fr.view(self.batch_size, seq_len_fr, -1), seq_len_fr)
         word_mask_4fr_tensor = get_torch_variable_from_np(word_mask_4fr).view(self.batch_size*seq_len_fr, -1)
+        """
+        word_mask_en, word_mask_fr = self.word_mask(output_word_en_en.view(self.batch_size, seq_len, -1),
+                                                    output_word_en_fr.view(self.batch_size, seq_len_fr, -1),
+                                                    seq_len_en, seq_len_fr)
+        word_mask_en_tensor = get_torch_variable_from_np(word_mask_en).view(self.batch_size * seq_len_en, -1)
+        word_mask_fr_tensor = get_torch_variable_from_np(word_mask_fr).view(self.batch_size * seq_len_fr, -1)
 
         output_word_en_en = F.softmax(output_word_en_en, dim=1).detach()
         output_word_fr_en = F.log_softmax(output_word_fr_en, dim=1)
 
-        loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en)*word_mask_4en_tensor
-        if word_mask_4en.sum() > 0:
+        loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en)*word_mask_en_tensor
+        if word_mask_en.sum() > 0:
             loss = loss.sum() / (self.batch_size*seq_len_en)
         else:
             loss = loss.sum()
 
         output_word_en_fr = F.softmax(output_word_en_fr, dim=1).detach()
         output_word_fr_fr = F.log_softmax(output_word_fr_fr, dim=1)
-        loss_2 = unlabeled_loss_function(output_word_fr_fr, output_word_en_fr)*word_mask_4fr_tensor
-        if word_mask_4fr.sum() > 0:
+        loss_2 = unlabeled_loss_function(output_word_fr_fr, output_word_en_fr)*word_mask_fr_tensor
+        if word_mask_fr.sum() > 0:
             loss_2 = loss_2.sum()/ (self.batch_size*seq_len_fr)
         else:
             loss_2 = loss_2.sum()
@@ -627,7 +669,7 @@ class SR_Model(nn.Module):
 
             output_word = self.SR_Matcher(pred_recur, bert_emb, flag_emb.detach(), word_id_emb.detach(), seq_len,
                                           para=False, use_bert=True)
-            copy_loss = self.copy_loss(SRL_input, flag_emb, bert_emb, seq_len)
+            copy_loss = 0#self.copy_loss(SRL_input, flag_emb, bert_emb, seq_len)
 
         return SRL_output, output_word, copy_loss
 
