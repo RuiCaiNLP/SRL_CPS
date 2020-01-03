@@ -379,7 +379,7 @@ if __name__ == '__main__':
                 loss = criterion(out, target_batch_variable)
                 loss_word = criterion_word(out_word, target_batch_variable)
                 if batch_i % 50 == 0:
-                    print("epoch:", epoch, batch_i, loss.item(), loss_word.item(), copy_loss.item())
+                    print("epoch:", epoch, batch_i, loss.item(), loss_word.item(), copy_loss)
                 optimizer.zero_grad()
                 (loss + loss_word).backward()
                 optimizer.step()
@@ -418,7 +418,7 @@ if __name__ == '__main__':
                 
                 
                 if batch_i % 50 == 0:
-                    print("para loss:", batch_i, u_loss.item(), u_loss_2.item(), copy_loss.item())
+                    print("para loss:", batch_i, u_loss.item(), u_loss_2.item(), copy_loss)
                     #print(coverage)
 
                 if batch_i > 0 and batch_i % show_steps == 0:
