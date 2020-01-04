@@ -326,6 +326,7 @@ class SR_Model(nn.Module):
     def word_mask(self,output_en_en, output_en_fr, seq_len_en, seq_len_fr):
         word_mask_en = np.zeros((self.batch_size, seq_len_en), dtype="float32")
         word_mask_fr = np.zeros((self.batch_size, seq_len_fr), dtype="float32")
+        return word_mask_en, word_mask_fr
         _, roles_en_fr = torch.max(output_en_fr, 2)
         _, roles_en_en = torch.max(output_en_en, 2)
         for i in range(self.batch_size):
