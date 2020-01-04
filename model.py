@@ -496,7 +496,7 @@ class SR_Model(nn.Module):
         #coverage_batch = self.role_coverage(output_word_en_en.view(self.batch_size, seq_len, -1),
         #                                    output_word_en_fr.view(self.batch_size, seq_len_fr, -1))
 
-        unlabeled_loss_function = nn.KLDivLoss(size_average=False)
+        unlabeled_loss_function = nn.KLDivLoss(reduction='none')
         """
         word_mask_4en = self.P_word_mask(output_word_fr_en.view(self.batch_size, seq_len, -1),
                                          output_word_fr_fr.view(self.batch_size, seq_len_fr, -1), seq_len_en)
@@ -509,14 +509,15 @@ class SR_Model(nn.Module):
         word_mask_en, word_mask_fr = self.word_mask(output_word_en_en.view(self.batch_size, seq_len_en, -1),
                                                     output_word_en_fr.view(self.batch_size, seq_len_fr, -1),
                                                     seq_len_en, seq_len_fr)
-        word_mask_en_tensor = get_torch_variable_from_np(word_mask_en).view(self.batch_size * seq_len_en, 1)
-        word_mask_fr_tensor = get_torch_variable_from_np(word_mask_fr).view(self.batch_size * seq_len_fr, 1)
+        word_mask_en_tensor = get_torch_variable_from_np(word_mask_en).view(self.batch_size * seq_len_en)
+        word_mask_fr_tensor = get_torch_variable_from_np(word_mask_fr).view(self.batch_size * seq_len_fr)
 
         output_word_en_en = F.softmax(output_word_en_en, dim=1).detach()
         output_word_fr_en = F.log_softmax(output_word_fr_en, dim=1)
-
         loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en)
+
         loss = loss.sum(dim=1)*word_mask_en_tensor
+
         if word_mask_en.sum() > 0:
             loss = loss.sum() / word_mask_en_tensor.sum()#(self.batch_size*seq_len_en)
         else:
