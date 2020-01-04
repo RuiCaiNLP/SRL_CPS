@@ -556,19 +556,19 @@ class SR_Model(nn.Module):
         output_word_fr_en = F.log_softmax(output_word_fr_en, dim=1)
         loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en)
 
-        loss = loss.sum(dim=1)*word_mask_en_tensor
+        loss = loss.sum(dim=1)#*word_mask_en_tensor
 
         if word_mask_en.sum() > 0:
-            loss = loss.sum() / word_mask_en_tensor.sum()#(self.batch_size*seq_len_en)
+            loss = loss.sum() / (self.batch_size*seq_len_en)
         else:
             loss = loss.sum()
 
         output_word_en_fr = F.softmax(output_word_en_fr, dim=1).detach()
         output_word_fr_fr = F.log_softmax(output_word_fr_fr, dim=1)
         loss_2 = unlabeled_loss_function(output_word_fr_fr, output_word_en_fr)
-        loss_2 = loss_2.sum(dim=1)*word_mask_fr_tensor
+        loss_2 = loss_2.sum(dim=1)#*word_mask_fr_tensor
         if word_mask_fr.sum() > 0:
-            loss_2 = loss_2.sum()/ word_mask_fr_tensor.sum()#(self.batch_size*seq_len_fr)
+            loss_2 = loss_2.sum()/ (self.batch_size*seq_len_fr)
         else:
             loss_2 = loss_2.sum()
         return  loss, loss_2, copy_loss_fr
