@@ -326,11 +326,11 @@ class SR_Model(nn.Module):
     def word_mask(self,output_en_en, output_en_fr, seq_len_en, seq_len_fr):
         word_mask_en = np.zeros((self.batch_size, seq_len_en), dtype="float32")
         word_mask_fr = np.zeros((self.batch_size, seq_len_fr), dtype="float32")
-        return word_mask_en, word_mask_fr
         _, roles_en_fr = torch.max(output_en_fr, 2)
         _, roles_en_en = torch.max(output_en_en, 2)
         for i in range(self.batch_size):
             en_role_set = [-1]*self.target_vocab_size
+
             all_null = True
             for id, role in enumerate(roles_en_en[i]):
                 if role > 1:
@@ -339,8 +339,8 @@ class SR_Model(nn.Module):
             fr_role_set = [-1] * self.target_vocab_size
             if all_null:
                 continue
-            found_already = False
 
+            found_already = False
             for id, role in enumerate(roles_en_fr[i]):
                 if role > 1:
                     if fr_role_set[role] != -1:
@@ -509,13 +509,14 @@ class SR_Model(nn.Module):
         word_mask_en, word_mask_fr = self.word_mask(output_word_en_en.view(self.batch_size, seq_len_en, -1),
                                                     output_word_en_fr.view(self.batch_size, seq_len_fr, -1),
                                                     seq_len_en, seq_len_fr)
-        word_mask_en_tensor = get_torch_variable_from_np(word_mask_en).view(self.batch_size * seq_len_en, -1)
-        word_mask_fr_tensor = get_torch_variable_from_np(word_mask_fr).view(self.batch_size * seq_len_fr, -1)
+        word_mask_en_tensor = get_torch_variable_from_np(word_mask_en).view(self.batch_size * seq_len_en, 1)
+        word_mask_fr_tensor = get_torch_variable_from_np(word_mask_fr).view(self.batch_size * seq_len_fr, 1)
 
         output_word_en_en = F.softmax(output_word_en_en, dim=1).detach()
         output_word_fr_en = F.log_softmax(output_word_fr_en, dim=1)
 
-        loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en)*word_mask_en_tensor
+        loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en)
+        loss = loss.sum(dim=1)*word_mask_en_tensor
         if word_mask_en.sum() > 0:
             loss = loss.sum() / word_mask_en_tensor.sum()#(self.batch_size*seq_len_en)
         else:
@@ -523,7 +524,8 @@ class SR_Model(nn.Module):
 
         output_word_en_fr = F.softmax(output_word_en_fr, dim=1).detach()
         output_word_fr_fr = F.log_softmax(output_word_fr_fr, dim=1)
-        loss_2 = unlabeled_loss_function(output_word_fr_fr, output_word_en_fr)*word_mask_fr_tensor
+        loss_2 = unlabeled_loss_function(output_word_fr_fr, output_word_en_fr)
+        loss_2 = loss_2.sum(dim=1)*word_mask_fr_tensor
         if word_mask_fr.sum() > 0:
             loss_2 = loss_2.sum()/ word_mask_fr_tensor.sum()#(self.batch_size*seq_len_fr)
         else:
