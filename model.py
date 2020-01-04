@@ -496,7 +496,7 @@ class SR_Model(nn.Module):
         #coverage_batch = self.role_coverage(output_word_en_en.view(self.batch_size, seq_len, -1),
         #                                    output_word_en_fr.view(self.batch_size, seq_len_fr, -1))
 
-        unlabeled_loss_function = nn.KLDivLoss(reduction='none')
+        unlabeled_loss_function = nn.KLDivLoss(reduce=False)
         """
         word_mask_4en = self.P_word_mask(output_word_fr_en.view(self.batch_size, seq_len, -1),
                                          output_word_fr_fr.view(self.batch_size, seq_len_fr, -1), seq_len_en)
