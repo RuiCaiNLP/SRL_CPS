@@ -443,7 +443,7 @@ class SR_Model(nn.Module):
                     word_mask[i][j] = 1.0
         return word_mask
 
-    def parallel_train(self, batch_input, use_bert, is_Train=True):
+    def parallel_train(self, batch_input, use_bert, isTrain=True):
         unlabeled_data_en, unlabeled_data_fr = batch_input
 
         predicates_1D_fr = unlabeled_data_fr['predicates_idx']
