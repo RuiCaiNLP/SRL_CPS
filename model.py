@@ -666,7 +666,7 @@ class SR_Model(nn.Module):
     """
 
 
-    def forward(self, batch_input, lang='En', unlabeled=False, self_constrain=False, use_bert=False):
+    def forward(self, batch_input, lang='En', unlabeled=False, self_constrain=False, use_bert=False, isTrain=False):
         if unlabeled:
 
             loss = self.parallel_train(batch_input, use_bert)
@@ -707,7 +707,7 @@ class SR_Model(nn.Module):
                         bert_emb[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
 
 
-            bert_emb = gaussian(bert_emb, True, 0, 0.1)
+            bert_emb = gaussian(bert_emb, isTrain, 0, 0.1)
             bert_emb = bert_emb.detach()
 
         if lang == "En":
