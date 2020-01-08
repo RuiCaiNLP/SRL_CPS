@@ -443,7 +443,7 @@ class SR_Model(nn.Module):
                     word_mask[i][j] = 1.0
         return word_mask
 
-    def parallel_train(self, batch_input, use_bert):
+    def parallel_train(self, batch_input, use_bert, is_Train=True):
         unlabeled_data_en, unlabeled_data_fr = batch_input
 
         predicates_1D_fr = unlabeled_data_fr['predicates_idx']
@@ -476,6 +476,7 @@ class SR_Model(nn.Module):
                 for j in range(len(bert_emb_fr[i])):
                     if j >= actual_lens_fr[i]:
                         bert_emb_fr[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
+            bert_emb_fr = gaussian(bert_emb_fr, isTrain, 0, 0.1)
             bert_emb_fr = bert_emb_fr.detach()
 
             bert_input_ids_en = get_torch_variable_from_np(unlabeled_data_en['bert_input_ids'])
@@ -494,6 +495,7 @@ class SR_Model(nn.Module):
                 for j in range(len(bert_emb_en[i])):
                     if j >= actual_lens_en[i]:
                         bert_emb_en[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
+            bert_emb_en = gaussian(bert_emb_en, isTrain, 0, 0.1)
             bert_emb_en = bert_emb_en.detach()
 
 
@@ -553,20 +555,20 @@ class SR_Model(nn.Module):
         word_mask_4fr = self.R_word_mask(output_word_en_en.view(self.batch_size, seq_len, -1),
                                          output_word_en_fr.view(self.batch_size, seq_len_fr, -1), seq_len_fr)
         word_mask_4fr_tensor = get_torch_variable_from_np(word_mask_4fr).view(self.batch_size*seq_len_fr, -1)
-        """
+        
         word_mask_en, word_mask_fr = self.word_mask_soft(output_word_en_en.view(self.batch_size, seq_len_en, -1),
                                                     output_word_en_fr.view(self.batch_size, seq_len_fr, -1),
                                                     seq_len_en, seq_len_fr)
         word_mask_en_tensor = get_torch_variable_from_np(word_mask_en).view(self.batch_size * seq_len_en)
         word_mask_fr_tensor = get_torch_variable_from_np(word_mask_fr).view(self.batch_size * seq_len_fr)
-
+        """
         output_word_en_en = F.softmax(output_word_en_en, dim=1).detach()
         output_word_fr_en = F.log_softmax(output_word_fr_en, dim=1)
         loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en)
 
         loss = loss.sum(dim=1)#*word_mask_en_tensor
 
-        if word_mask_en.sum() > 0:
+        if True or word_mask_en.sum() > 0:
             loss = loss.sum() / (self.batch_size*seq_len_en)
         else:
             loss = loss.sum()
@@ -575,7 +577,7 @@ class SR_Model(nn.Module):
         output_word_fr_fr = F.log_softmax(output_word_fr_fr, dim=1)
         loss_2 = unlabeled_loss_function(output_word_fr_fr, output_word_en_fr)
         loss_2 = loss_2.sum(dim=1)#*word_mask_fr_tensor
-        if word_mask_fr.sum() > 0:
+        if True or word_mask_fr.sum() > 0:
             loss_2 = loss_2.sum()/ (self.batch_size*seq_len_fr)
         else:
             loss_2 = loss_2.sum()
