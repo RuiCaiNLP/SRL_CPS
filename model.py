@@ -13,6 +13,14 @@ from utils import bilinear
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+
+def gaussian(ins, is_training, mean, stddev):
+    if is_training:
+        noise = get_torch_variable_from_np(ins.data.new(ins.size()).normal_(mean, stddev))
+        return ins + noise
+    return ins
+
+
 class SR_Labeler(nn.Module):
     def __init__(self, model_params):
         super(SR_Labeler, self).__init__()
@@ -698,13 +706,16 @@ class SR_Model(nn.Module):
                     if j >= actual_lens[i]:
                         bert_emb[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
 
-            bert_emb = bert_emb.detach()
 
+            bert_emb = gaussian(bert_emb, True, 0, 0.1)
+            bert_emb = bert_emb.detach()
 
         if lang == "En":
             pretrain_emb = self.pretrained_embedding(pretrain_batch).detach()
         else:
             pretrain_emb = self.fr_pretrained_embedding(pretrain_batch).detach()
+
+
 
 
         seq_len = flag_emb.shape[1]
