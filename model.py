@@ -16,7 +16,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 def gaussian(ins, is_training, mean, stddev):
     if is_training:
-        noise = get_torch_variable_from_np(ins.data.new(ins.size()).normal_(mean, stddev))
+        noise = ins.data.new(ins.size()).normal_(mean, stddev)
         return ins + noise
     return ins
 
