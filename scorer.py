@@ -137,7 +137,7 @@ def eval_data(model, elmo, dataset, batch_size ,word2idx, fr_word2idx, lemma2idx
         seq_len = input_data['seq_len']
         bs = input_data['batch_size']
         psl = input_data['pad_seq_len']
-        out, out_word, _ = model(input_data, lang=lang, use_bert=use_bert)
+        out, out_word = model(input_data, lang=lang, use_bert=use_bert)
 
         _, pred = torch.max(out, 1)
         pred = get_data(pred)
