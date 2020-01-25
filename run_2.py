@@ -411,7 +411,7 @@ if __name__ == '__main__':
                 u_loss_pair, loss_word = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True,
                                                     self_constrain=False, use_bert=use_bert)
                 optimizer.zero_grad()
-                u_loss, u_loss_2, copy_loss = u_loss_pair
+                u_loss, u_loss_2 = u_loss_pair
                 (u_loss + u_loss_2).backward()
                 optimizer.step()
                 batch_size = 30
