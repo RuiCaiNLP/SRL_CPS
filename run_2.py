@@ -418,7 +418,7 @@ if __name__ == '__main__':
                 
                 
                 if batch_i % 50 == 0:
-                    print("para loss:", batch_i, u_loss.item(), u_loss_2.item(), copy_loss)
+                    print("para loss:", batch_i, u_loss.item(), u_loss_2.item())
                     #print(coverage)
 
                 if batch_i > 0 and batch_i % show_steps == 0:
