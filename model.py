@@ -514,13 +514,12 @@ class SR_Model(nn.Module):
         SRL_input_fr = SRL_output_fr.view(self.batch_size, seq_len_fr, -1)
         pred_recur_fr = self.SR_Compressor(SRL_input_fr, bert_emb_fr,
                                         flag_emb_fr.detach(), None, predicates_1D_fr, seq_len_fr, para=True, use_bert=True)
-        copy_loss_fr = 0#self.copy_loss(SRL_input_fr, flag_emb_fr, bert_emb_fr, seq_len_fr)
 
         """
         En event vector, En word
         """
         output_word_en_en = self.SR_Matcher(pred_recur.detach(), bert_emb_en, flag_emb.detach(), None, seq_len,
-                                         para=True, use_bert=True)
+                                         para=True, use_bert=True).detach()
 
         #############################################
         """
@@ -540,7 +539,7 @@ class SR_Model(nn.Module):
         En event vector, Fr word
         """
         output_word_en_fr = self.SR_Matcher(pred_recur.detach(), bert_emb_fr, flag_emb_fr.detach(), None, seq_len_fr,
-                                         para=True, use_bert=True)
+                                         para=True, use_bert=True).detach()
         """
         Fr event vector, Fr word
         """
