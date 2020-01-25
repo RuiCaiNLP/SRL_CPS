@@ -747,9 +747,8 @@ class SR_Model(nn.Module):
 
             output_word = self.SR_Matcher(pred_recur, bert_emb, flag_emb.detach(), word_id_emb.detach(), seq_len,
                                           para=False, use_bert=True)
-            copy_loss = 0#self.copy_loss(SRL_input, flag_emb, bert_emb, seq_len)
 
-        return SRL_output, output_word, copy_loss
+        return SRL_output, output_word
 
 
 
