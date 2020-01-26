@@ -443,7 +443,7 @@ class SR_Model(nn.Module):
                     word_mask[i][j] = 1.0
         return word_mask
 
-    def parallel_train(self, batch_input, use_bert, isTrain=True):
+    def parallel_train_(self, batch_input, use_bert, isTrain=True):
         unlabeled_data_en, unlabeled_data_fr = batch_input
 
         predicates_1D_fr = unlabeled_data_fr['predicates_idx']
@@ -671,6 +671,132 @@ class SR_Model(nn.Module):
 
     """
 
+    def parallel_train(self, batch_input, use_bert, isTrain=True):
+        unlabeled_data_en, unlabeled_data_fr = batch_input
+
+        predicates_1D_fr = unlabeled_data_fr['predicates_idx']
+        flag_batch_fr = get_torch_variable_from_np(unlabeled_data_fr['flag'])
+
+        flag_emb_fr = self.flag_embedding(flag_batch_fr).detach()
+        actual_lens_fr = unlabeled_data_fr['seq_len']
+
+        predicates_1D = unlabeled_data_en['predicates_idx']
+        flag_batch = get_torch_variable_from_np(unlabeled_data_en['flag'])
+        actual_lens_en = unlabeled_data_en['seq_len']
+        flag_emb = self.flag_embedding(flag_batch).detach()
+        seq_len = flag_emb.shape[1]
+        seq_len_en = seq_len
+
+        if use_bert:
+            bert_input_ids_fr = get_torch_variable_from_np(unlabeled_data_fr['bert_input_ids'])
+            bert_input_mask_fr = get_torch_variable_from_np(unlabeled_data_fr['bert_input_mask'])
+            bert_out_positions_fr = get_torch_variable_from_np(unlabeled_data_fr['bert_out_positions'])
+
+            bert_emb_fr = self.model(bert_input_ids_fr, attention_mask=bert_input_mask_fr)
+            bert_emb_fr = bert_emb_fr[0]
+            bert_emb_fr = bert_emb_fr[:, 1:-1, :].contiguous().detach()
+            bert_emb_fr = bert_emb_fr[torch.arange(bert_emb_fr.size(0)).unsqueeze(-1), bert_out_positions_fr].detach()
+
+            for i in range(len(bert_emb_fr)):
+                if i >= len(actual_lens_fr):
+                    print("error")
+                    break
+                for j in range(len(bert_emb_fr[i])):
+                    if j >= actual_lens_fr[i]:
+                        bert_emb_fr[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
+            bert_emb_fr = gaussian(bert_emb_fr, isTrain, 0, 0.1)
+            bert_emb_fr = bert_emb_fr.detach()
+
+            bert_input_ids_en = get_torch_variable_from_np(unlabeled_data_en['bert_input_ids'])
+            bert_input_mask_en = get_torch_variable_from_np(unlabeled_data_en['bert_input_mask'])
+            bert_out_positions_en = get_torch_variable_from_np(unlabeled_data_en['bert_out_positions'])
+
+            bert_emb_en = self.model(bert_input_ids_en, attention_mask=bert_input_mask_en)
+            bert_emb_en = bert_emb_en[0]
+            bert_emb_en = bert_emb_en[:, 1:-1, :].contiguous().detach()
+            bert_emb_en = bert_emb_en[torch.arange(bert_emb_en.size(0)).unsqueeze(-1), bert_out_positions_en].detach()
+
+            for i in range(len(bert_emb_en)):
+                if i >= len(actual_lens_en):
+                    print("error")
+                    break
+                for j in range(len(bert_emb_en[i])):
+                    if j >= actual_lens_en[i]:
+                        bert_emb_en[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
+            bert_emb_en = gaussian(bert_emb_en, isTrain, 0, 0.1)
+            bert_emb_en = bert_emb_en.detach()
+
+        seq_len = flag_emb.shape[1]
+        SRL_output = self.SR_Labeler(bert_emb_en, flag_emb.detach(), predicates_1D, seq_len, para=True, use_bert=True)
+
+        SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
+        pred_recur = self.SR_Compressor(SRL_input.detach(), bert_emb_en,
+                                        flag_emb.detach(), None, predicates_1D, seq_len, para=True, use_bert=True)
+
+        seq_len_fr = flag_emb_fr.shape[1]
+        SRL_output_fr = self.SR_Labeler(bert_emb_fr, flag_emb_fr.detach(), predicates_1D_fr, seq_len_fr, para=True,
+                                        use_bert=True)
+
+        SRL_input_fr = SRL_output_fr.view(self.batch_size, seq_len_fr, -1)
+        pred_recur_fr = self.SR_Compressor(SRL_input_fr, bert_emb_fr,
+                                           flag_emb_fr.detach(), None, predicates_1D_fr, seq_len_fr, para=True,
+                                           use_bert=True)
+
+        """
+        En event vector, En word
+        """
+        output_word_en_en = self.SR_Matcher(pred_recur.detach(), bert_emb_en, flag_emb.detach(), None, seq_len,
+                                            para=True, use_bert=True)
+        output_word_en_en = F.softmax(output_word_en_en, dim=1).detach()
+
+        #############################################
+        """
+        Fr event vector, En word
+        """
+        output_word_fr_en = self.SR_Matcher(pred_recur_fr, bert_emb_en, flag_emb.detach(), None, seq_len,
+                                            para=True, use_bert=True)
+        output_word_fr_en = F.softmax(output_word_fr_en, dim=1)
+
+        ## B*T R 2
+        Union_enfr_en = torch.cat((output_word_en_en.view(-1, self.target_vocab_size, 1),
+                                   output_word_fr_en.view(-1, self.target_vocab_size, 1)), 2)
+        ## B*T R
+        max_enfr_en = torch.max(Union_enfr_en, 2)[0]
+        print(max_enfr_en[:,:2])
+        max_enfr_en[:, :2] = output_word_en_en[:, :2]
+
+
+        #############################################3
+        """
+        En event vector, Fr word
+        """
+        output_word_en_fr = self.SR_Matcher(pred_recur.detach(), bert_emb_fr, flag_emb_fr.detach(), None, seq_len_fr,
+                                            para=True, use_bert=True)
+        output_word_en_fr = F.softmax(output_word_en_fr, dim=1).detach()
+
+        """
+        Fr event vector, Fr word
+        """
+        output_word_fr_fr = self.SR_Matcher(pred_recur_fr, bert_emb_fr, flag_emb_fr.detach(), None, seq_len_fr,
+                                            para=True, use_bert=True)
+        output_word_fr_fr = F.softmax(output_word_fr_fr, dim=1)
+
+        ## B*T R 2
+        Union_enfr_fr = torch.cat((output_word_en_fr.view(-1, self.target_vocab_size, 1),
+                                   output_word_fr_fr.view(-1, self.target_vocab_size, 1)), 2)
+        ## B*T R
+        max_enfr_fr = torch.max(Union_enfr_fr, 2)[0]
+        max_enfr_fr[:, :2] = output_word_fr_fr[:,:2].detach()
+
+
+        unlabeled_loss_function = nn.L1loss(reduction='None')
+        loss = unlabeled_loss_function(max_enfr_en, output_word_en_en)
+        loss = loss.sum() / (self.batch_size * seq_len_en)
+
+        loss_2 = unlabeled_loss_function(output_word_fr_fr, max_enfr_fr)
+        loss_2 = loss_2.sum() / (self.batch_size * seq_len_fr)
+
+        return loss, loss_2
 
     def forward(self, batch_input, lang='En', unlabeled=False, self_constrain=False, use_bert=False, isTrain=False):
         if unlabeled:
