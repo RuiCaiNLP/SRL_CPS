@@ -793,9 +793,13 @@ class SR_Model(nn.Module):
         #max_enfr_fr[:, :2] = output_word_fr_fr[:,:2].detach()
 
 
-        unlabeled_loss_function = nn.L1Loss(reduction='mean')
+        unlabeled_loss_function = nn.L1Loss(reduction='none')
         loss = unlabeled_loss_function(max_enfr_en[:, :2], output_word_en_en[:, :2])
+        loss = torch.max(loss, 1)[0]
+        loss = loss.sum() / (self.batch_size*seq_len_en)
         loss_2 = unlabeled_loss_function(output_word_fr_fr[:, 2:], max_enfr_fr[:, 2:])
+        loss_2 = torch.max(loss_2, 1)[0]
+        loss_2 = loss_2.sum() / (self.batch_size * seq_len_fr)
 
 
         return loss, loss_2
