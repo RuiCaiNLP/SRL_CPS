@@ -150,7 +150,8 @@ class SR_Compressor(nn.Module):
 class SR_Matcher(nn.Module):
     def __init__(self, model_params):
         super(SR_Matcher, self).__init__()
-        self.dropout_word = nn.Dropout(p=0.3)
+        self.dropout_word_1 = nn.Dropout(p=0.3)
+        self.dropout_word_2 = nn.Dropout(p=0.2)
         self.mlp_size = 300
         self.dropout_mlp = model_params['dropout_mlp']
         self.batch_size = model_params['batch_size']
@@ -187,11 +188,12 @@ class SR_Matcher(nn.Module):
                                                                               10)
         role_hidden = torch.cat((forward_hidden, backward_hidden), 2)
         role_hidden = role_hidden.unsqueeze(1).expand(self.batch_size, seq_len, self.target_vocab_size, 20)
+        pretrained_emb = self.dropout_word_1(pretrained_emb)
         if not use_bert:
             combine = self.compress_word(torch.cat((pretrained_emb,  word_id_emb), 2))
         else:
             combine = self.compress_bert(pretrained_emb)
-        combine = self.dropout_word(combine)
+        combine = self.dropout_word_2(combine)
         combine = combine.unsqueeze(2).expand(self.batch_size, seq_len, self.target_vocab_size, 20)
         scores = self.scorer(torch.cat((role_hidden, combine), 3)).view(self.batch_size*seq_len, self.target_vocab_size)
 
