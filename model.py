@@ -767,7 +767,7 @@ class SR_Model(nn.Module):
         #max_enfr_en = torch.max(Union_enfr_en, 2)[0]
         max_enfr_en = torch.max(output_word_fr_en, output_word_en_en)
         #print(max_enfr_en[:,:2])
-        max_enfr_en[:, 2:] = output_word_en_en[:, 2:]
+        #max_enfr_en[:, 2:] = output_word_en_en[:, 2:]
 
 
         #############################################3
@@ -789,16 +789,14 @@ class SR_Model(nn.Module):
         #Union_enfr_fr = torch.cat((output_word_en_fr.view(-1, self.target_vocab_size, 1),
         #                           output_word_fr_fr.view(-1, self.target_vocab_size, 1)), 2)
         ## B*T R
-        max_enfr_fr = torch.max(output_word_fr_fr, output_word_en_fr)
-        max_enfr_fr[:, :2] = output_word_fr_fr[:,:2].detach()
+        max_enfr_fr = torch.max(output_word_fr_fr, output_word_en_fr).detach()
+        #max_enfr_fr[:, :2] = output_word_fr_fr[:,:2].detach()
 
 
-        unlabeled_loss_function = nn.L1Loss(reduction='none')
-        loss = unlabeled_loss_function(max_enfr_en, output_word_en_en)
-        loss = loss.sum() / (self.batch_size * seq_len_en)
+        unlabeled_loss_function = nn.L1Loss(reduction='mean')
+        loss = unlabeled_loss_function(max_enfr_en[:, :2], output_word_en_en[:, :2])
+        loss_2 = unlabeled_loss_function(output_word_fr_fr[:, 2:], max_enfr_fr[:, 2:])
 
-        loss_2 = unlabeled_loss_function(output_word_fr_fr, max_enfr_fr)
-        loss_2 = loss_2.sum() / (self.batch_size * seq_len_fr)
 
         return loss, loss_2
 
@@ -838,7 +836,7 @@ class SR_Model(nn.Module):
                         bert_emb[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
 
 
-            bert_emb = gaussian(bert_emb, isTrain, 0, 0.1)
+            #bert_emb = gaussian(bert_emb, isTrain, 0, 0.1)
             bert_emb = bert_emb.detach()
 
         if lang == "En":
