@@ -789,7 +789,7 @@ class SR_Model(nn.Module):
         max_enfr_fr[:, :2] = output_word_fr_fr[:,:2].detach()
 
 
-        unlabeled_loss_function = nn.L1loss(reduction='None')
+        unlabeled_loss_function = nn.L1Loss(reduction='None')
         loss = unlabeled_loss_function(max_enfr_en, output_word_en_en)
         loss = loss.sum() / (self.batch_size * seq_len_en)
 
