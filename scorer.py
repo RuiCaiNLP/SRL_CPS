@@ -52,7 +52,7 @@ def sem_f1_score(target, predict, argument2idx, unify_pred = False, predicate_co
                 if pred_i == golden_i:
                     predicate_correct += 1
             else:
-                if golden_i == argument2idx[_PAD_]:
+                if golden_i == argument2idx[_PAD_] or pred_i == argument2idx[_PAD_]:
                 #if golden_i == 0:
                     continue
                 total += 1
