@@ -704,7 +704,7 @@ class SR_Model(nn.Module):
                 for j in range(len(bert_emb_fr[i])):
                     if j >= actual_lens_fr[i]:
                         bert_emb_fr[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
-            bert_emb_fr = gaussian(bert_emb_fr, isTrain, 0, 0.1)
+            #bert_emb_fr = gaussian(bert_emb_fr, isTrain, 0, 0.1)
             bert_emb_fr = bert_emb_fr.detach()
 
             bert_input_ids_en = get_torch_variable_from_np(unlabeled_data_en['bert_input_ids'])
@@ -713,7 +713,7 @@ class SR_Model(nn.Module):
 
             bert_emb_en = self.model(bert_input_ids_en, attention_mask=bert_input_mask_en)
             bert_emb_en = bert_emb_en[0]
-            bert_emb_en = bert_emb_en[:, 1:-1, :].contiguous().detach()
+            #bert_emb_en = bert_emb_en[:, 1:-1, :].contiguous().detach()
             bert_emb_en = bert_emb_en[torch.arange(bert_emb_en.size(0)).unsqueeze(-1), bert_out_positions_en].detach()
 
             for i in range(len(bert_emb_en)):
@@ -806,11 +806,6 @@ class SR_Model(nn.Module):
             loss_word = 0
 
             return loss, loss_word
-        if self_constrain:
-
-            loss = self.self_train(batch_input)
-
-            return loss
 
         pretrain_batch = get_torch_variable_from_np(batch_input['pretrain'])
         predicates_1D = batch_input['predicates_idx']
