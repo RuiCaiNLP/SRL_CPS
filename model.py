@@ -762,7 +762,7 @@ class SR_Model(nn.Module):
                                    output_word_fr_en.view(-1, self.target_vocab_size, 1)), 2)
         ## B*T R
         max_enfr_en = torch.max(Union_enfr_en, 2)[0]
-        print(max_enfr_en[:,:2])
+        #print(max_enfr_en[:,:2])
         max_enfr_en[:, :2] = output_word_en_en[:, :2]
 
 
