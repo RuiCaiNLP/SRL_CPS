@@ -723,7 +723,7 @@ class SR_Model(nn.Module):
                 for j in range(len(bert_emb_en[i])):
                     if j >= actual_lens_en[i]:
                         bert_emb_en[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
-            bert_emb_en = gaussian(bert_emb_en, isTrain, 0, 0.1)
+            #bert_emb_en = gaussian(bert_emb_en, isTrain, 0, 0.1)
             bert_emb_en = bert_emb_en.detach()
 
         seq_len = flag_emb.shape[1]
