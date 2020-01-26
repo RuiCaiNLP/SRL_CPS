@@ -764,7 +764,7 @@ class SR_Model(nn.Module):
         #max_enfr_en = torch.max(Union_enfr_en, 2)[0]
         max_enfr_en = torch.max(output_word_fr_en, output_word_en_en)
         #print(max_enfr_en[:,:2])
-        ##max_enfr_en[:, :2] = output_word_en_en[:, :2]
+        max_enfr_en[:, 2:] = output_word_en_en[:, 2:]
 
 
         #############################################3
