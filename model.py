@@ -758,10 +758,11 @@ class SR_Model(nn.Module):
         output_word_fr_en = F.softmax(output_word_fr_en, dim=1)
 
         ## B*T R 2
-        Union_enfr_en = torch.cat((output_word_en_en.view(-1, self.target_vocab_size, 1),
-                                   output_word_fr_en.view(-1, self.target_vocab_size, 1)), 2)
+        #Union_enfr_en = torch.cat((output_word_en_en.view(-1, self.target_vocab_size, 1),
+        #                           output_word_fr_en.view(-1, self.target_vocab_size, 1)), 2)
         ## B*T R
-        max_enfr_en = torch.max(Union_enfr_en, 2)[0]
+        #max_enfr_en = torch.max(Union_enfr_en, 2)[0]
+        max_enfr_en = torch.max(output_word_fr_en, output_word_en_en)
         #print(max_enfr_en[:,:2])
         max_enfr_en[:, :2] = output_word_en_en[:, :2]
 
@@ -782,10 +783,10 @@ class SR_Model(nn.Module):
         output_word_fr_fr = F.softmax(output_word_fr_fr, dim=1)
 
         ## B*T R 2
-        Union_enfr_fr = torch.cat((output_word_en_fr.view(-1, self.target_vocab_size, 1),
-                                   output_word_fr_fr.view(-1, self.target_vocab_size, 1)), 2)
+        #Union_enfr_fr = torch.cat((output_word_en_fr.view(-1, self.target_vocab_size, 1),
+        #                           output_word_fr_fr.view(-1, self.target_vocab_size, 1)), 2)
         ## B*T R
-        max_enfr_fr = torch.max(Union_enfr_fr, 2)[0]
+        max_enfr_fr = torch.max(output_word_fr_fr, output_word_en_fr)
         max_enfr_fr[:, :2] = output_word_fr_fr[:,:2].detach()
 
 
