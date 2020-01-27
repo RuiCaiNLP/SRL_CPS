@@ -862,8 +862,14 @@ class SR_Model(nn.Module):
             SRL_output = self.SR_Labeler(bert_emb, flag_emb, predicates_1D, seq_len, para=False, use_bert=True)
 
             SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
-            SRL_input_probs = F.softmax(SRL_input, 2).detach()
-            pred_recur = self.SR_Compressor(SRL_input_probs, bert_emb,
+            #SRL_input_probs = F.softmax(SRL_input, 2).detach()
+            _, prediction_batch_variable = torch.max(SRL_input, 2)
+            labeler_pred = np.zeros((self.batch_size, seq_len, self.target_vocab_size)).astype('float32')
+            for i in range(self.batch_size):
+                for j in range(seq_len):
+                    labeler_pred[i][j][prediction_batch_variable] = 1.0
+            labeler_pred = get_torch_variable_from_np(labeler_pred)
+            pred_recur = self.SR_Compressor(labeler_pred, bert_emb,
                                             flag_emb.detach(), word_id_emb, predicates_1D, seq_len, para=False,
                                             use_bert=True)
 
