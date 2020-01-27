@@ -147,8 +147,8 @@ class SR_Compressor(nn.Module):
 class SR_Matcher(nn.Module):
     def __init__(self, model_params):
         super(SR_Matcher, self).__init__()
-        self.dropout_word_1 = nn.Dropout(p=0.3)
-        self.dropout_word_2 = nn.Dropout(p=0.2)
+        self.dropout_word_1 = nn.Dropout(p=0.0)
+        self.dropout_word_2 = nn.Dropout(p=0.0)
         self.mlp_size = 300
         self.dropout_mlp = model_params['dropout_mlp']
         self.batch_size = model_params['batch_size']
