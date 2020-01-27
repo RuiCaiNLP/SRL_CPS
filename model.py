@@ -765,7 +765,7 @@ class SR_Model(nn.Module):
         #                           output_word_fr_en.view(-1, self.target_vocab_size, 1)), 2)
         ## B*T R
         #max_enfr_en = torch.max(Union_enfr_en, 2)[0]
-        max_enfr_en = torch.max(output_word_fr_en, output_word_en_en)
+        #max_enfr_en = torch.max(output_word_fr_en, output_word_en_en)
         #print(max_enfr_en[:,:2])
         #max_enfr_en[:, 2:] = output_word_en_en[:, 2:]
 
@@ -778,6 +778,10 @@ class SR_Model(nn.Module):
                                             para=True, use_bert=True)
         output_word_en_fr = F.softmax(output_word_en_fr, dim=1).detach()
 
+        output_word_en_fr_nonNull = torch.cat((output_word_en_fr[:, 0:1], output_word_en_fr[:, 2:]), 1)
+        output_en_fr_nonNull_max, output_en_fr_nonNull_argmax = torch.max(output_word_en_fr_nonNull, 1)
+
+
         """
         Fr event vector, Fr word
         """
@@ -785,21 +789,25 @@ class SR_Model(nn.Module):
                                             para=True, use_bert=True)
         output_word_fr_fr = F.softmax(output_word_fr_fr, dim=1)
 
+        output_word_fr_fr_nonNull = torch.cat((output_word_fr_fr[:, 0:1], output_word_fr_fr[:, 2:]), 1)
+        output_word_fr_fr_nonNull_maxarg = torch.gather(output_word_fr_fr_nonNull, 1, output_en_fr_nonNull_argmax.view(-1,1))
+
+
         ## B*T R 2
         #Union_enfr_fr = torch.cat((output_word_en_fr.view(-1, self.target_vocab_size, 1),
         #                           output_word_fr_fr.view(-1, self.target_vocab_size, 1)), 2)
         ## B*T R
-        max_enfr_fr = torch.max(output_word_fr_fr, output_word_en_fr).detach()
+        #max_enfr_fr = torch.max(output_word_fr_fr, output_word_en_fr).detach()
         #max_enfr_fr[:, :2] = output_word_fr_fr[:,:2].detach()
 
 
         unlabeled_loss_function = nn.L1Loss(reduction='none')
-        loss = unlabeled_loss_function(max_enfr_en[:, 1:2], output_word_en_en[:, 1:2])
-        loss = torch.max(loss, 1)[0]
+        loss = unlabeled_loss_function(output_word_fr_en[:, 1:2], output_word_en_en[:, 1:2])
         loss = loss.sum() / (self.batch_size*seq_len_en)
-        loss_2 = unlabeled_loss_function(output_word_fr_fr[:, 2:], max_enfr_fr[:, 2:])
-        loss_2 = torch.max(loss_2, 1)[0]
-        loss_2 = loss_2.sum() / (self.batch_size * seq_len_fr)
+        loss_2 = unlabeled_loss_function(output_word_fr_fr_nonNull_maxarg.view(-1), output_en_fr_nonNull_max)
+        theta = torch.gt(output_en_fr_nonNull_max, output_word_en_fr[:, 1])
+        loss_2 = theta*loss_2
+        loss_2 = loss_2.sum() /theta.sum()
 
 
         return loss, loss_2
