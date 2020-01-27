@@ -1,5 +1,5 @@
 from __future__ import print_function
-import model
+import model_compress
 import data_utils
 import inter_utils
 import pickle
@@ -335,7 +335,7 @@ if __name__ == '__main__':
         }
 
         # build model
-        srl_model = model.SR_Model(model_params)
+        srl_model = model_compress.SR_Model(model_params)
 
         if USE_CUDA:
             srl_model.cuda()
@@ -375,9 +375,9 @@ if __name__ == '__main__':
                 target_batch_variable = get_torch_variable_from_np(flat_argument)
 
                 out, out_word = srl_model(train_input_data, lang='En', use_bert=use_bert, isTrain=True)
-                #_,  prediction_batch_variable = torch.max(out, 1)
+                _,  prediction_batch_variable = torch.max(out, 1)
                 loss = criterion(out, target_batch_variable)
-                loss_word = criterion_word(out_word, target_batch_variable)
+                loss_word = criterion_word(out_word, prediction_batch_variable)
                 if batch_i % 50 == 0:
                     print("epoch:", epoch, batch_i, loss.item(), loss_word.item())
                 optimizer.zero_grad()
@@ -387,7 +387,7 @@ if __name__ == '__main__':
 
 
                 #batch_size=1
-
+                """
                 try:
                     unlabeled_data_en = next(unlabeled_Generator_En)
                     unlabeled_data_fr = next(unlabeled_Generator_Fr)
@@ -420,7 +420,7 @@ if __name__ == '__main__':
                 if batch_i % 50 == 0:
                     print("para loss:", batch_i, u_loss.item(), u_loss_2.item())
                     #print(coverage)
-
+                """
                 if batch_i > 0 and batch_i % show_steps == 0:
                     srl_model.eval()
                     _, pred = torch.max(out, 1)
