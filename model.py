@@ -807,7 +807,10 @@ class SR_Model(nn.Module):
         loss_2 = unlabeled_loss_function(output_word_fr_fr_nonNull_maxarg.view(-1), output_en_fr_nonNull_max)
         theta = torch.gt(output_en_fr_nonNull_max, output_word_en_fr[:, 1])
         loss_2 = theta*loss_2
-        loss_2 = loss_2.sum() /theta.sum()
+        if torch.gt(theta.sum(), 0):
+            loss_2 = loss_2.sum() /theta.sum()
+        else:
+            loss_2 = loss_2.sum()
 
 
         return loss, loss_2
