@@ -868,7 +868,7 @@ class SR_Model(nn.Module):
             labeler_pred = np.zeros((self.batch_size, seq_len, self.target_vocab_size)).astype('float32')
             for i in range(self.batch_size):
                 for j in range(seq_len):
-                    labeler_pred[i][j][prediction_batch_variable] = 1.0
+                    labeler_pred[i][j][prediction_batch_variable[i][j].data.cpu()] = 1.0
             labeler_pred = get_torch_variable_from_np(labeler_pred).to(device)
             pred_recur = self.SR_Compressor(labeler_pred, bert_emb,
                                             flag_emb.detach(), word_id_emb, predicates_1D, seq_len, para=False,
