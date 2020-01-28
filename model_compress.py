@@ -103,31 +103,31 @@ class SR_Compressor(nn.Module):
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
 
         self.bilstm_hidden_state_word = (
-            torch.zeros(2 * 2, self.batch_size, self.target_vocab_size * 10).to(device),
-            torch.zeros(2 * 2, self.batch_size, self.target_vocab_size * 10).to(device))
+            torch.zeros(2 * 2, self.batch_size, (self.target_vocab_size-1) * 10).to(device),
+            torch.zeros(2 * 2, self.batch_size, (self.target_vocab_size-1) * 10).to(device))
 
         self.bilstm_hidden_state_bert = (
-            torch.zeros(2 * 2, self.batch_size, self.target_vocab_size * 10).to(device),
-            torch.zeros(2 * 2, self.batch_size, self.target_vocab_size * 10).to(device))
+            torch.zeros(2 * 2, self.batch_size, (self.target_vocab_size-1) * 10).to(device),
+            torch.zeros(2 * 2, self.batch_size, (self.target_vocab_size-1) * 10).to(device))
 
         self.bilstm_layer_word = nn.LSTM(input_size=300 + self.target_vocab_size + 2 * self.flag_emb_size,
                                          hidden_size=self.target_vocab_size * 10, num_layers=2,
                                          bidirectional=True,
                                          bias=True, batch_first=True)
 
-        self.bilstm_layer_bert = nn.LSTM(input_size=768 + self.target_vocab_size + 1 * self.flag_emb_size,
-                                         hidden_size=self.target_vocab_size * 10, num_layers=2,
+        self.bilstm_layer_bert = nn.LSTM(input_size=768 + self.target_vocab_size + 0 * self.flag_emb_size,
+                                         hidden_size=(self.target_vocab_size-1) * 10, num_layers=2,
                                          bidirectional=True,
                                          bias=True, batch_first=True)
 
     def forward(self, SRL_input, word_emb, flag_emb, word_id_emb, predicates_1D, seq_len, use_bert=False, para=False):
         self.bilstm_hidden_state_word = (
-            torch.zeros(2 * 2, self.batch_size, self.target_vocab_size * 10).to(device),
-            torch.zeros(2 * 2, self.batch_size, self.target_vocab_size * 10).to(device))
+            torch.zeros(2 * 2, self.batch_size, (self.target_vocab_size-1) * 10).to(device),
+            torch.zeros(2 * 2, self.batch_size, (self.target_vocab_size-1) * 10).to(device))
 
         self.bilstm_hidden_state_bert = (
-            torch.zeros(2 * 2, self.batch_size, self.target_vocab_size * 10).to(device),
-            torch.zeros(2 * 2, self.batch_size, self.target_vocab_size * 10).to(device))
+            torch.zeros(2 * 2, self.batch_size, (self.target_vocab_size-1) * 10).to(device),
+            torch.zeros(2 * 2, self.batch_size, (self.target_vocab_size-1) * 10).to(device))
 
         SRL_input = SRL_input.view(self.batch_size, seq_len, -1)
         if not use_bert:
@@ -136,7 +136,7 @@ class SR_Compressor(nn.Module):
                                                                                       self.bilstm_hidden_state_word)
             bilstm_output = bilstm_output_word.contiguous()
         else:
-            compress_input = torch.cat((word_emb, flag_emb, SRL_input), 2)
+            compress_input = torch.cat((word_emb, SRL_input), 2)
             bilstm_output_bert, (_, bilstm_final_state_bert) = self.bilstm_layer_bert(compress_input,
                                                                                       self.bilstm_hidden_state_bert)
             bilstm_output = bilstm_output_bert.contiguous()
@@ -179,21 +179,21 @@ class SR_Matcher(nn.Module):
         output_word = output_word.view(self.batch_size * seq_len, -1)
         """
 
-        forward_hidden = pred_recur[:, :self.target_vocab_size * 10].view(self.batch_size, self.target_vocab_size,
+        forward_hidden = pred_recur[:, :(self.target_vocab_size-1) * 10].view(self.batch_size, (self.target_vocab_size-1),
                                                                           10)
-        backward_hidden = pred_recur[:, self.target_vocab_size * 10:].view(self.batch_size, self.target_vocab_size,
+        backward_hidden = pred_recur[:, (self.target_vocab_size-1) * 10:].view(self.batch_size, (self.target_vocab_size-1),
                                                                            10)
         role_hidden = torch.cat((forward_hidden, backward_hidden), 2)
-        role_hidden = role_hidden.unsqueeze(1).expand(self.batch_size, seq_len, self.target_vocab_size, 20)
+        role_hidden = role_hidden.unsqueeze(1).expand(self.batch_size, seq_len, (self.target_vocab_size-1), 20)
         pretrained_emb = self.dropout_word_1(pretrained_emb)
         if not use_bert:
             combine = self.compress_word(torch.cat((pretrained_emb, word_id_emb), 2))
         else:
             combine = self.compress_bert(pretrained_emb)
         combine = self.dropout_word_2(combine)
-        combine = combine.unsqueeze(2).expand(self.batch_size, seq_len, self.target_vocab_size, 20)
+        combine = combine.unsqueeze(2).expand(self.batch_size, seq_len, self.target_vocab_size-1, 20)
         scores = self.scorer(torch.cat((role_hidden, combine), 3)).view(self.batch_size * seq_len,
-                                                                        self.target_vocab_size)
+                                                                        (self.target_vocab_size - 1))
 
         return scores
 
@@ -877,10 +877,11 @@ class SR_Model(nn.Module):
             output_word = self.SR_Matcher(pred_recur, bert_emb, flag_emb.detach(), word_id_emb.detach(), seq_len,
                                           para=False, use_bert=True)
 
-            output_word[:, 1] = torch.zeros_like(output_word[:, 1])
+            score4Null = torch.zeros_like(output_word[:, 1:2])
+            output_word = torch.cat((output_word[:, 0:1], score4Null, output_word[:, 1:]), 1)
 
             teacher = F.softmax(SRL_input.view(self.batch_size * seq_len, -1), dim=1).detach()
-            student = F.log_softmax(output_word.view(self.batch_size * seq_len, -1), dim=1)
+            student = F.log_softmax(output_word, dim=1)
             unlabeled_loss_function = nn.KLDivLoss(reduction='none')
             loss_copy = unlabeled_loss_function(student, teacher)
             loss_copy = loss_copy.sum() / (self.batch_size * seq_len)
