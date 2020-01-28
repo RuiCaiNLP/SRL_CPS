@@ -374,14 +374,15 @@ if __name__ == '__main__':
                 flat_argument = train_input_data['flat_argument']
                 target_batch_variable = get_torch_variable_from_np(flat_argument)
 
-                out, out_word = srl_model(train_input_data, lang='En', use_bert=use_bert, isTrain=True)
+                out, out_word, copy_loss = srl_model(train_input_data, lang='En', use_bert=use_bert, isTrain=True)
                 #_,  prediction_batch_variable = torch.max(out, 1)
                 loss = criterion(out, target_batch_variable)
-                loss_word = criterion_word(out_word, target_batch_variable)
+
+                #loss_word = criterion_word(out_word, target_batch_variable)
                 if batch_i % 50 == 0:
-                    print("epoch:", epoch, batch_i, loss.item(), loss_word.item())
+                    print("epoch:", epoch, batch_i, loss.item(), copy_loss.item())
                 optimizer.zero_grad()
-                (loss + loss_word).backward()
+                (loss + copy_loss).backward()
                 optimizer.step()
 
 
