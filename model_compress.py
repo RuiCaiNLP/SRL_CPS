@@ -877,6 +877,8 @@ class SR_Model(nn.Module):
             output_word = self.SR_Matcher(pred_recur, bert_emb, flag_emb.detach(), word_id_emb.detach(), seq_len,
                                           para=False, use_bert=True)
 
+            output_word[:, 1] = torch.zeros_like(output_word[:, 1])
+
             teacher = F.softmax(SRL_input.view(self.batch_size * seq_len, -1), dim=1).detach()
             student = F.log_softmax(output_word.view(self.batch_size * seq_len, -1), dim=1)
             unlabeled_loss_function = nn.KLDivLoss(reduction='none')
