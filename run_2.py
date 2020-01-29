@@ -406,20 +406,16 @@ if __name__ == '__main__':
                     unlabeled_data_en = next(unlabeled_Generator_En)
                     unlabeled_data_fr = next(unlabeled_Generator_Fr)
 
-
-
-                
-                u_loss_pair, loss_word = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True,
+                loss, loss_2, copy_loss = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True,
                                                     self_constrain=False, use_bert=use_bert)
                 optimizer.zero_grad()
-                u_loss, u_loss_2 = u_loss_pair
-                (u_loss + u_loss_2).backward()
+                (loss + loss_2 + copy_loss).backward()
                 optimizer.step()
                 batch_size = 30
                 
                 
                 if batch_i % 50 == 0:
-                    print("para loss:", batch_i, u_loss.item(), u_loss_2.item())
+                    print("para loss:", batch_i, loss.item(), loss_2.item(), copy_loss.item())
                     #print(coverage)
 
                 if batch_i > 0 and batch_i % show_steps == 0:
