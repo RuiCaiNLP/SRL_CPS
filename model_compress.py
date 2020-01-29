@@ -307,7 +307,7 @@ class SR_Model(nn.Module):
         score4Null = torch.zeros_like(output_word[:, 1:2])
         output_word = torch.cat((output_word[:, 0:1], score4Null, output_word[:, 1:]), 1)
 
-        teacher = SRL_input#F.softmax(SRL_input.view(self.batch_size * seq_len, -1), dim=1).detach()
+        teacher = SRL_input.view(self.batch_size * seq_len, -1)#F.softmax(SRL_input.view(self.batch_size * seq_len, -1), dim=1).detach()
         student = F.log_softmax(output_word.view(self.batch_size * seq_len, -1), dim=1)
         unlabeled_loss_function = nn.KLDivLoss(reduction='none')
         loss = unlabeled_loss_function(student, teacher)
