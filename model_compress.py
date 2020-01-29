@@ -147,7 +147,7 @@ class SR_Compressor(nn.Module):
 class SR_Matcher(nn.Module):
     def __init__(self, model_params):
         super(SR_Matcher, self).__init__()
-        self.dropout_word_1 = nn.Dropout(p=0.0)
+        self.dropout_word_1 = nn.Dropout(p=0.3)
         self.dropout_word_2 = nn.Dropout(p=0.0)
         self.mlp_size = 300
         self.dropout_mlp = model_params['dropout_mlp']
@@ -564,7 +564,7 @@ class SR_Model(nn.Module):
         # output_word_en_en = F.softmax(output_word_en_en, dim=1).detach()
         # output_word_fr_en = F.log_softmax(output_word_fr_en, dim=1)
         # loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en)
-        output_word_en_en = SRL_input.view(self.batch_size*seq_len, -1).detach()#F.softmax(output_word_en_en, dim=1).detach()
+        output_word_en_en = F.softmax(output_word_en_en, dim=1).detach()
         output_word_fr_en = F.log_softmax(output_word_fr_en, dim=1)
         loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en)
         loss = loss.sum() / (self.batch_size * seq_len_en)
