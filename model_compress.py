@@ -512,6 +512,8 @@ class SR_Model(nn.Module):
         SRL_output_fr = self.SR_Labeler(bert_emb_fr, flag_emb_fr.detach(), predicates_1D_fr, seq_len_fr, para=True,
                                         use_bert=True)
 
+        CopyLoss_fr = self.copy_loss(SRL_output_fr, bert_emb_fr, flag_emb_fr.detach(), seq_len_fr)
+
 
         SRL_input_fr = SRL_output_fr.view(self.batch_size, seq_len_fr, -1)
         SRL_input_fr = F.softmax(SRL_input_fr, 2)
@@ -575,7 +577,7 @@ class SR_Model(nn.Module):
 
 
 
-        return loss, loss_2, CopyLoss_en
+        return loss, loss_2, CopyLoss_en, CopyLoss_fr
 
 
 
