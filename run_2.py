@@ -409,7 +409,7 @@ if __name__ == '__main__':
                 loss, loss_2, copy_loss, copy_loss_fr = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True,
                                                     self_constrain=False, use_bert=use_bert)
                 optimizer.zero_grad()
-                (loss + loss_2 + copy_loss + copy_loss_fr).backward()
+                loss.backward()
                 optimizer.step()
                 batch_size = 30
                 
