@@ -307,7 +307,7 @@ class SR_Model(nn.Module):
         score4Null = torch.zeros_like(output_word[:, 1:2])
         output_word = torch.cat((output_word[:, 0:1], score4Null, output_word[:, 1:]), 1)
 
-        teacher = SRL_input.view(self.batch_size * seq_len, -1)#F.softmax(SRL_input.view(self.batch_size * seq_len, -1), dim=1).detach()
+        teacher = SRL_input.view(self.batch_size * seq_len, -1).detach()#F.softmax(SRL_input.view(self.batch_size * seq_len, -1), dim=1).detach()
         student = F.log_softmax(output_word.view(self.batch_size * seq_len, -1), dim=1)
         unlabeled_loss_function = nn.KLDivLoss(reduction='none')
         loss = unlabeled_loss_function(student, teacher)
@@ -501,6 +501,8 @@ class SR_Model(nn.Module):
         seq_len = flag_emb.shape[1]
         SRL_output = self.SR_Labeler(bert_emb_en, flag_emb.detach(), predicates_1D, seq_len, para=True, use_bert=True)
 
+        CopyLoss_en = self.copy_loss(SRL_output, bert_emb_en, flag_emb.detach(), seq_len)
+
         SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
         SRL_input = F.softmax(SRL_input, 2)
         pred_recur = self.SR_Compressor(SRL_input.detach(), bert_emb_en,
@@ -510,7 +512,7 @@ class SR_Model(nn.Module):
         SRL_output_fr = self.SR_Labeler(bert_emb_fr, flag_emb_fr.detach(), predicates_1D_fr, seq_len_fr, para=True,
                                         use_bert=True)
 
-        CopyLoss_fr = self.copy_loss(SRL_output_fr, bert_emb_fr, flag_emb_fr.detach(), seq_len_fr)
+
         SRL_input_fr = SRL_output_fr.view(self.batch_size, seq_len_fr, -1)
         SRL_input_fr = F.softmax(SRL_input_fr, 2)
         pred_recur_fr = self.SR_Compressor(SRL_input_fr, bert_emb_fr,
@@ -573,7 +575,7 @@ class SR_Model(nn.Module):
 
 
 
-        return loss, loss_2, CopyLoss_fr
+        return loss, loss_2, CopyLoss_en
 
 
 
