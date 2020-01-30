@@ -756,6 +756,7 @@ class SR_Model(nn.Module):
                         bert_emb[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
 
             bert_emb_noise = gaussian(bert_emb, isTrain, 0, 0.1).detach()
+            bert_emb_noise_2 = gaussian(bert_emb, isTrain, 0, 0.1).detach()
             bert_emb = bert_emb.detach()
 
         if lang == "En":
@@ -787,12 +788,21 @@ class SR_Model(nn.Module):
             #    for j in range(seq_len):
             #        labeler_pred[i][j][prediction_batch_variable[i][j].data.cpu()] = 1.0
             #labeler_pred = get_torch_variable_from_np(labeler_pred).to(device)
-            pred_recur = self.SR_Compressor(SRL_input_probs, bert_emb_noise,
-                                            flag_emb.detach(), word_id_emb, predicates_1D, seq_len, para=False,
-                                            use_bert=True)
+            if isTrain:
+                pred_recur = self.SR_Compressor(SRL_input_probs, bert_emb_noise,
+                                                flag_emb.detach(), word_id_emb, predicates_1D, seq_len, para=False,
+                                                use_bert=True)
 
-            output_word = self.SR_Matcher(pred_recur, bert_emb, flag_emb.detach(), word_id_emb.detach(), seq_len, copy=True,
-                                          para=False, use_bert=True)
+                output_word = self.SR_Matcher(pred_recur, bert_emb_noise_2, flag_emb.detach(), word_id_emb.detach(), seq_len, copy=True,
+                                              para=False, use_bert=True)
+            else:
+                pred_recur = self.SR_Compressor(SRL_input_probs, bert_emb,
+                                                flag_emb.detach(), word_id_emb, predicates_1D, seq_len, para=False,
+                                                use_bert=True)
+
+                output_word = self.SR_Matcher(pred_recur, bert_emb, flag_emb.detach(), word_id_emb.detach(),
+                                              seq_len, copy=False,
+                                              para=False, use_bert=True)
 
             score4Null = torch.zeros_like(output_word[:, 1:2])
             output_word = torch.cat((output_word[:, 0:1], score4Null, output_word[:, 1:]), 1)
