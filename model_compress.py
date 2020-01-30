@@ -476,7 +476,7 @@ class SR_Model(nn.Module):
                 for j in range(len(bert_emb_fr[i])):
                     if j >= actual_lens_fr[i]:
                         bert_emb_fr[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
-            #bert_emb_fr = gaussian(bert_emb_fr, isTrain, 0, 0.1)
+            bert_emb_fr_noise = gaussian(bert_emb_fr, isTrain, 0, 0.1).detach()
             bert_emb_fr = bert_emb_fr.detach()
 
             bert_input_ids_en = get_torch_variable_from_np(unlabeled_data_en['bert_input_ids'])
@@ -495,7 +495,7 @@ class SR_Model(nn.Module):
                 for j in range(len(bert_emb_en[i])):
                     if j >= actual_lens_en[i]:
                         bert_emb_en[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
-            #bert_emb_en = gaussian(bert_emb_en, isTrain, 0, 0.1)
+            bert_emb_en_noise = gaussian(bert_emb_en, isTrain, 0, 0.1).detach()
             bert_emb_en = bert_emb_en.detach()
 
         seq_len = flag_emb.shape[1]
@@ -505,14 +505,14 @@ class SR_Model(nn.Module):
 
         SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
         SRL_input = F.softmax(SRL_input, 2)
-        pred_recur = self.SR_Compressor(SRL_input.detach(), bert_emb_en,
+        pred_recur = self.SR_Compressor(SRL_input.detach(), bert_emb_en_noise,
                                         flag_emb.detach(), None, predicates_1D, seq_len, para=True, use_bert=True)
 
         seq_len_fr = flag_emb_fr.shape[1]
         SRL_output_fr = self.SR_Labeler(bert_emb_fr, flag_emb_fr.detach(), predicates_1D_fr, seq_len_fr, para=True,
                                         use_bert=True)
 
-        CopyLoss_fr = self.copy_loss(SRL_output_fr, bert_emb_fr, flag_emb_fr.detach(), seq_len_fr)
+        CopyLoss_fr = self.copy_loss(SRL_output_fr, bert_emb_fr_noise, flag_emb_fr.detach(), seq_len_fr)
 
 
         SRL_input_fr = SRL_output_fr.view(self.batch_size, seq_len_fr, -1)
