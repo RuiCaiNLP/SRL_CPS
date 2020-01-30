@@ -164,6 +164,7 @@ class SR_Matcher(nn.Module):
         self.compress_bert = nn.Sequential(nn.Linear(768 + 0 * self.flag_emb_size, 20), nn.ReLU())
         self.scorer = nn.Sequential(nn.Linear(40, 20),
                                     nn.ReLU(),
+                                    nn.Dropout(0.2),
                                     nn.Linear(20, 1))
         self.match_word = nn.Sequential(
             nn.Linear(2 * self.bilstm_hidden_size + 300 + 2 * self.flag_emb_size, self.mlp_size),
