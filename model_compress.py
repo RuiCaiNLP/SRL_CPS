@@ -754,7 +754,7 @@ class SR_Model(nn.Module):
                     if j >= actual_lens[i]:
                         bert_emb[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
 
-            # bert_emb = gaussian(bert_emb, isTrain, 0, 0.1)
+            bert_emb_noise = gaussian(bert_emb, isTrain, 0, 0.1).detach()
             bert_emb = bert_emb.detach()
 
         if lang == "En":
@@ -786,7 +786,7 @@ class SR_Model(nn.Module):
             #    for j in range(seq_len):
             #        labeler_pred[i][j][prediction_batch_variable[i][j].data.cpu()] = 1.0
             #labeler_pred = get_torch_variable_from_np(labeler_pred).to(device)
-            pred_recur = self.SR_Compressor(SRL_input_probs, bert_emb,
+            pred_recur = self.SR_Compressor(SRL_input_probs, bert_emb_noise,
                                             flag_emb.detach(), word_id_emb, predicates_1D, seq_len, para=False,
                                             use_bert=True)
 
