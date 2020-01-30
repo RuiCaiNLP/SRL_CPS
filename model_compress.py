@@ -170,7 +170,7 @@ class SR_Matcher(nn.Module):
             nn.ReLU(),
             nn.Linear(self.mlp_size, self.target_vocab_size))
 
-    def forward(self, pred_recur, pretrained_emb, flag_emb, word_id_emb, seq_len, use_bert=False, para=False):
+    def forward(self, pred_recur, pretrained_emb, flag_emb, word_id_emb, seq_len, use_bert=False, copy = False, para=False):
         """
         pred_recur = pred_recur.view(self.batch_size, self.bilstm_hidden_size * 2)
         pred_recur = pred_recur.unsqueeze(1).expand(self.batch_size, seq_len, self.bilstm_hidden_size * 2)
@@ -185,7 +185,8 @@ class SR_Matcher(nn.Module):
                                                                            10)
         role_hidden = torch.cat((forward_hidden, backward_hidden), 2)
         role_hidden = role_hidden.unsqueeze(1).expand(self.batch_size, seq_len, (self.target_vocab_size-1), 20)
-        pretrained_emb = self.dropout_word_1(pretrained_emb)
+        if copy:
+            pretrained_emb = self.dropout_word_1(pretrained_emb)
         if not use_bert:
             combine = self.compress_word(torch.cat((pretrained_emb, word_id_emb), 2))
         else:
@@ -301,7 +302,7 @@ class SR_Model(nn.Module):
         pred_recur = self.SR_Compressor(SRL_input, pretrain_emb,
                                         flag_emb.detach(), None, None, seq_len, para=False, use_bert=True)
 
-        output_word = self.SR_Matcher(pred_recur, pretrain_emb, flag_emb.detach(), None, seq_len,
+        output_word = self.SR_Matcher(pred_recur, pretrain_emb, flag_emb.detach(), None, seq_len, copy = True,
                                       para=False, use_bert=True)
 
         score4Null = torch.zeros_like(output_word[:, 1:2])
@@ -790,7 +791,7 @@ class SR_Model(nn.Module):
                                             flag_emb.detach(), word_id_emb, predicates_1D, seq_len, para=False,
                                             use_bert=True)
 
-            output_word = self.SR_Matcher(pred_recur, bert_emb, flag_emb.detach(), word_id_emb.detach(), seq_len,
+            output_word = self.SR_Matcher(pred_recur, bert_emb, flag_emb.detach(), word_id_emb.detach(), seq_len, copy=True,
                                           para=False, use_bert=True)
 
             score4Null = torch.zeros_like(output_word[:, 1:2])
