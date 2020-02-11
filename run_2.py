@@ -19,7 +19,7 @@ from scorer import eval_train_batch, eval_data
 from data_utils import output_predict
 
 from data_utils import *
-
+import sys
 
 #def log(*args, **kwargs):
     #print(*args,file=sys.stderr, **kwargs)
@@ -384,7 +384,7 @@ if __name__ == '__main__':
                 optimizer.zero_grad()
                 (loss + copy_loss).backward()
                 optimizer.step()
-
+                sys.stdout.flush()
 
 
                 #batch_size=1
@@ -406,16 +406,19 @@ if __name__ == '__main__':
                     unlabeled_data_en = next(unlabeled_Generator_En)
                     unlabeled_data_fr = next(unlabeled_Generator_Fr)
 
-                loss, loss_2, copy_loss, copy_loss_fr = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True,
+                #loss, loss_2, copy_loss, copy_loss_fr =
+                loss =  srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True,
                                                     self_constrain=False, use_bert=use_bert)
-                #optimizer.zero_grad()
+                optimizer.zero_grad()
                 #(loss+loss_2 + copy_loss + copy_loss_fr).backward()
-                #optimizer.step()
+                loss.backward()
+                optimizer.step()
                 #batch_size = 30
                 
                 
                 if batch_i % 50 == 0:
-                    print("para loss:", batch_i, loss.item(), loss_2.item(), copy_loss.item(), copy_loss_fr.item())
+                    #print("para loss:", batch_i, loss.item(), loss_2.item(), copy_loss.item(), copy_loss_fr.item())
+                    print('trans loss', loss)
                     #print(coverage)
 
                 if batch_i > 0 and batch_i % show_steps == 0:

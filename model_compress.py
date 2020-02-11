@@ -268,34 +268,13 @@ class SR_Model(nn.Module):
         self.model.to(device)
         self.model.eval()
 
-    def role_coverage(self, output_en, output_fr):
-        _, roles_en = torch.max(output_en, 2)
-        _, roles_fr = torch.max(output_fr, 2)
-        coverages = [0.0] * self.batch_size
-        for i in range(self.batch_size):
-            NonNull_Truth = 0.0
-            NonNull_Predict = 0.0
-            In_NonNull_Predict = 0.0
-            for role in roles_en[i]:
-                if role > 1:
-                    NonNull_Truth += 1
-            if NonNull_Truth < 1:
-                coverages[i] = 0.0
-                continue
-            for role in roles_fr[i]:
-                if role > 1:
-                    NonNull_Predict += 1
-                    if role in roles_en[i]:
-                        In_NonNull_Predict += 1
-            if In_NonNull_Predict == 0 or NonNull_Predict == 0:
-                coverages[i] = 0.0
-                continue
-            P = In_NonNull_Predict / NonNull_Predict
-            R = In_NonNull_Predict / NonNull_Truth
-            F = 2 * P * R / (P + R)
-            coverages[i] = F
+        self.Fr_LinearTrans = nn.Linear(768, 768)
+        self.bert_NonlinearTrans = nn.Sequential(nn.Linear(768, 768),
+                                    nn.ReLU())
 
-        return coverages
+        self.Fr_LinearTrans.weight.data.copy_(
+            torch.from_numpy(np.eye(768, 768, dtype="float32")))
+
 
     def copy_loss(self, output_SRL, pretrain_emb, flag_emb, seq_len):
         SRL_input = output_SRL.view(self.batch_size, seq_len, -1)
@@ -315,135 +294,6 @@ class SR_Model(nn.Module):
         loss = unlabeled_loss_function(student, teacher)
         loss = loss.sum() / (self.batch_size * seq_len)
         return loss
-
-    # for En sentence, loss I
-    # if Fr event vector find an En word which could output same argument with an Fr word,
-    # think this En word should be Ax. Then, we need to ask the opinion of En event vector about this En word
-    def P_word_mask(self, output_fr_en, output_fr_fr, seq_len_en):
-        word_mask = np.zeros((self.batch_size, seq_len_en), dtype="float32")
-
-        _, roles_fr_en = torch.max(output_fr_en, 2)
-        _, roles_fr_fr = torch.max(output_fr_fr, 2)
-        for i in range(self.batch_size):
-            fr_roles_set = []
-            for role in roles_fr_fr[i]:
-                if role not in fr_roles_set:
-                    fr_roles_set.append(role)
-            for j in range(seq_len_en):
-                if roles_fr_en[i][j] < 2:
-                    continue
-                elif roles_fr_en[i][j] in fr_roles_set:
-                    word_mask[i][j] = 1.0
-        return word_mask
-
-    def word_mask(self, output_en_en, output_en_fr, seq_len_en, seq_len_fr):
-        word_mask_en = np.zeros((self.batch_size, seq_len_en), dtype="float32")
-        word_mask_fr = np.zeros((self.batch_size, seq_len_fr), dtype="float32")
-        _, roles_en_fr = torch.max(output_en_fr, 2)
-        _, roles_en_en = torch.max(output_en_en, 2)
-        for i in range(self.batch_size):
-            en_role_set = [-1] * self.target_vocab_size
-
-            all_null = True
-            for id, role in enumerate(roles_en_en[i]):
-                if role > 1:
-                    all_null = False
-                    en_role_set[role] = id
-            fr_role_set = [-1] * self.target_vocab_size
-            if all_null:
-                continue
-
-            found_already = False
-            for id, role in enumerate(roles_en_fr[i]):
-                if role > 1:
-                    if fr_role_set[role] != -1:
-                        found_already = True
-                        break
-                    fr_role_set[role] = id
-            if found_already:
-                continue
-
-            for a, b in zip(en_role_set[2:], fr_role_set[2:]):
-                if a == -1 and b >= 0:
-                    found_already = True
-                    break
-                if a >= 0 and b == -1:
-                    found_already = True
-                    break
-            if found_already:
-                continue
-
-            word_mask_en[i] = np.ones((seq_len_en,), dtype="float32")
-            word_mask_fr[i] = np.ones((seq_len_fr,), dtype="float32")
-
-            """
-            for id in en_role_set:
-                if id!=-1:
-                    word_mask_en[i][id] = 1.0
-            for id in fr_role_set:
-                if id != -1:
-                    word_mask_fr[i][id] = 1.0
-            """
-        return word_mask_en, word_mask_fr
-
-    def word_mask_soft(self, output_en_en, output_en_fr, seq_len_en, seq_len_fr):
-        word_mask_en = np.zeros((self.batch_size, seq_len_en), dtype="float32")
-        word_mask_fr = np.zeros((self.batch_size, seq_len_fr), dtype="float32")
-        _, roles_en_fr = torch.max(output_en_fr, 2)
-        _, roles_en_en = torch.max(output_en_en, 2)
-        for i in range(self.batch_size):
-            en_role_set = [-1] * self.target_vocab_size
-            en_role_num = 0
-            for id, role in enumerate(roles_en_en[i]):
-                if role > 1:
-                    en_role_set[role] = id
-                    en_role_num += 1
-
-            fr_role_num = 0
-            co_role_num = 0
-            fr_role_set = [-1] * self.target_vocab_size
-            for id, role in enumerate(roles_en_fr[i]):
-                if role > 1:
-                    fr_role_set[role] = id
-                    fr_role_num += 1
-                    if en_role_set[role] >= 0:
-                        co_role_num += 1
-
-            if en_role_num > 1 and co_role_num == 0:
-                continue
-
-            word_mask_en[i] = np.ones((seq_len_en,), dtype="float32")
-            word_mask_fr[i] = np.ones((seq_len_fr,), dtype="float32")
-
-            """
-            for id in en_role_set:
-                if id!=-1:
-                    word_mask_en[i][id] = 1.0
-            for id in fr_role_set:
-                if id != -1:
-                    word_mask_fr[i][id] = 1.0
-            """
-        return word_mask_en, word_mask_fr
-
-    # for Fr sentence, loss II
-    # if En event vector find an Fr word which could output same argument with an En word,
-    # think this Fr word should be Ax. Then, we need to check the opinion of Fr event vector about this Fr word
-    def R_word_mask(self, output_en_en, output_en_fr, seq_len_fr):
-        word_mask = np.zeros((self.batch_size, seq_len_fr), dtype="float32")
-
-        _, roles_en_en = torch.max(output_en_en, 2)
-        _, roles_en_fr = torch.max(output_en_fr, 2)
-        for i in range(self.batch_size):
-            en_roles_set = []
-            for role in roles_en_en[i]:
-                if role not in en_roles_set:
-                    en_roles_set.append(role)
-            for j in range(seq_len_fr):
-                if roles_en_fr[i][j] < 2:
-                    continue
-                elif roles_en_fr[i][j] in en_roles_set:
-                    word_mask[i][j] = 1.0
-        return word_mask
 
     def parallel_train_(self, batch_input, use_bert, isTrain=True):
         unlabeled_data_en, unlabeled_data_fr = batch_input
@@ -581,7 +431,67 @@ class SR_Model(nn.Module):
 
         return loss, loss_2, CopyLoss_en, CopyLoss_fr
 
+    def word_trans(self, batch_input, use_bert, isTrain=True):
+        unlabeled_data_en, unlabeled_data_fr = batch_input
 
+        predicates_1D_fr = unlabeled_data_fr['predicates_idx']
+        flag_batch_fr = get_torch_variable_from_np(unlabeled_data_fr['flag'])
+
+        flag_emb_fr = self.flag_embedding(flag_batch_fr).detach()
+        actual_lens_fr = unlabeled_data_fr['seq_len']
+
+        predicates_1D = unlabeled_data_en['predicates_idx']
+        flag_batch = get_torch_variable_from_np(unlabeled_data_en['flag'])
+        actual_lens_en = unlabeled_data_en['seq_len']
+        flag_emb = self.flag_embedding(flag_batch).detach()
+        seq_len = flag_emb.shape[1]
+        seq_len_en = seq_len
+
+        if use_bert:
+            bert_input_ids_fr = get_torch_variable_from_np(unlabeled_data_fr['bert_input_ids'])
+            bert_input_mask_fr = get_torch_variable_from_np(unlabeled_data_fr['bert_input_mask'])
+            bert_out_positions_fr = get_torch_variable_from_np(unlabeled_data_fr['bert_out_positions'])
+
+            bert_emb_fr = self.model(bert_input_ids_fr, attention_mask=bert_input_mask_fr)
+            bert_emb_fr = bert_emb_fr[0]
+            bert_emb_fr = bert_emb_fr[:, 1:-1, :].contiguous().detach()
+            bert_emb_fr = bert_emb_fr[torch.arange(bert_emb_fr.size(0)).unsqueeze(-1), bert_out_positions_fr].detach()
+
+            for i in range(len(bert_emb_fr)):
+                if i >= len(actual_lens_fr):
+                    print("error")
+                    break
+                for j in range(len(bert_emb_fr[i])):
+                    if j >= actual_lens_fr[i]:
+                        bert_emb_fr[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
+            bert_emb_fr_noise = gaussian(bert_emb_fr, isTrain, 0, 0.1).detach()
+            bert_emb_fr = bert_emb_fr.detach()
+
+            bert_input_ids_en = get_torch_variable_from_np(unlabeled_data_en['bert_input_ids'])
+            bert_input_mask_en = get_torch_variable_from_np(unlabeled_data_en['bert_input_mask'])
+            bert_out_positions_en = get_torch_variable_from_np(unlabeled_data_en['bert_out_positions'])
+
+            bert_emb_en = self.model(bert_input_ids_en, attention_mask=bert_input_mask_en)
+            bert_emb_en = bert_emb_en[0]
+            bert_emb_en = bert_emb_en[:, 1:-1, :].contiguous().detach()
+            bert_emb_en = bert_emb_en[torch.arange(bert_emb_en.size(0)).unsqueeze(-1), bert_out_positions_en].detach()
+
+            for i in range(len(bert_emb_en)):
+                if i >= len(actual_lens_en):
+                    print("error")
+                    break
+                for j in range(len(bert_emb_en[i])):
+                    if j >= actual_lens_en[i]:
+                        bert_emb_en[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
+            bert_emb_en_noise = gaussian(bert_emb_en, isTrain, 0, 0.1).detach()
+            bert_emb_en = bert_emb_en.detach()
+
+            pred_bert_fr = bert_emb_fr[np.arange(0, self.batch_size), predicates_1D_fr]
+            pred_bert_en = bert_emb_en[np.arange(0, self.batch_size), predicates_1D]
+            diff = pred_bert_en-self.Fr_LinearTrans(pred_bert_fr)
+            loss = torch.abs(diff)
+            loss = loss.sum()/(self.batch_size*768)
+            return loss
 
     def parallel_train(self, batch_input, use_bert, isTrain=True):
         unlabeled_data_en, unlabeled_data_fr = batch_input
@@ -726,9 +636,11 @@ class SR_Model(nn.Module):
 
     def forward(self, batch_input, lang='En', unlabeled=False, self_constrain=False, use_bert=False, isTrain=False):
         if unlabeled:
-            loss, loss_2, copy_loss_en, copy_loss_fr = self.parallel_train_(batch_input, use_bert)
+            #loss, loss_2, copy_loss_en, copy_loss_fr = self.parallel_train_(batch_input, use_bert)
 
-            return loss, loss_2, copy_loss_en, copy_loss_fr
+            #return loss, loss_2, copy_loss_en, copy_loss_fr
+            loss = self.word_trans(batch_input, use_bert)
+            return loss
 
         pretrain_batch = get_torch_variable_from_np(batch_input['pretrain'])
         predicates_1D = batch_input['predicates_idx']
@@ -756,14 +668,14 @@ class SR_Model(nn.Module):
                     if j >= actual_lens[i]:
                         bert_emb[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
 
-            bert_emb_noise = gaussian(bert_emb, isTrain, 0, 0.1).detach()
-            bert_emb_noise_2 = gaussian(bert_emb, isTrain, 0, 0.1).detach()
+
             bert_emb = bert_emb.detach()
 
         if lang == "En":
             pretrain_emb = self.pretrained_embedding(pretrain_batch).detach()
         else:
             pretrain_emb = self.fr_pretrained_embedding(pretrain_batch).detach()
+            bert_emb = self.Fr_LinearTrans(bert_emb)
 
         seq_len = flag_emb.shape[1]
         if not use_bert:
@@ -782,19 +694,13 @@ class SR_Model(nn.Module):
 
             SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
             SRL_input_probs = F.softmax(SRL_input, 2).detach()
-            #_, prediction_batch_variable = torch.max(SRL_input, 2)
-            #print(prediction_batch_variable)
-            #labeler_pred = np.zeros((self.batch_size, seq_len, self.target_vocab_size)).astype('float32')
-            #for i in range(self.batch_size):
-            #    for j in range(seq_len):
-            #        labeler_pred[i][j][prediction_batch_variable[i][j].data.cpu()] = 1.0
-            #labeler_pred = get_torch_variable_from_np(labeler_pred).to(device)
+
             if isTrain:
-                pred_recur = self.SR_Compressor(SRL_input_probs, bert_emb_noise,
+                pred_recur = self.SR_Compressor(SRL_input_probs, bert_emb,
                                                 flag_emb.detach(), word_id_emb, predicates_1D, seq_len, para=False,
                                                 use_bert=True)
 
-                output_word = self.SR_Matcher(pred_recur, bert_emb_noise_2, flag_emb.detach(), word_id_emb.detach(), seq_len, copy=True,
+                output_word = self.SR_Matcher(pred_recur, bert_emb, flag_emb.detach(), word_id_emb.detach(), seq_len, copy=True,
                                               para=False, use_bert=True)
             else:
                 pred_recur = self.SR_Compressor(SRL_input_probs, bert_emb,
