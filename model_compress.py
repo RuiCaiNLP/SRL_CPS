@@ -269,7 +269,9 @@ class SR_Model(nn.Module):
         self.model.eval()
 
         self.Fr_LinearTrans = nn.Linear(768, 768)
-        self.bert_NonlinearTrans = nn.Sequential(nn.Linear(768, 768),
+        self.bert_NonlinearTrans = nn.Sequential(nn.Linear(768, 400),
+                                    nn.ReLU(),
+                                    nn.Linear(400, 200),
                                     nn.ReLU())
 
         self.Fr_LinearTrans.weight.data.copy_(
@@ -488,7 +490,7 @@ class SR_Model(nn.Module):
 
             pred_bert_fr = bert_emb_fr[np.arange(0, self.batch_size), predicates_1D_fr]
             pred_bert_en = bert_emb_en[np.arange(0, self.batch_size), predicates_1D]
-            diff = pred_bert_en-self.Fr_LinearTrans(pred_bert_fr)
+            diff = self.bert_NonlinearTrans(pred_bert_en)-self.bert_NonlinearTrans(pred_bert_fr)
             loss = torch.abs(diff)
             loss = loss.sum()/(self.batch_size*768)
             return loss
@@ -670,12 +672,12 @@ class SR_Model(nn.Module):
 
 
             bert_emb = bert_emb.detach()
-
+        bert_emb = self.bert_NonlinearTrans(bert_emb)
         if lang == "En":
             pretrain_emb = self.pretrained_embedding(pretrain_batch).detach()
         else:
             pretrain_emb = self.fr_pretrained_embedding(pretrain_batch).detach()
-            bert_emb = self.Fr_LinearTrans(bert_emb)
+
 
         seq_len = flag_emb.shape[1]
         if not use_bert:
