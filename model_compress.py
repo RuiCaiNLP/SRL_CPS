@@ -492,7 +492,7 @@ class SR_Model(nn.Module):
             pred_bert_en = bert_emb_en[np.arange(0, self.batch_size), predicates_1D]
             diff = self.bert_NonlinearTrans(pred_bert_en).detach()-self.bert_NonlinearTrans(pred_bert_fr)
             loss = torch.abs(diff)
-            loss = loss.sum()/(self.batch_size*768)
+            loss = loss.sum()/(self.batch_size*200)
             return loss
 
     def parallel_train(self, batch_input, use_bert, isTrain=True):
