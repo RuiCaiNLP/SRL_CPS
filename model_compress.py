@@ -698,7 +698,7 @@ class SR_Model(nn.Module):
             SRL_input_probs = F.softmax(SRL_input, 2).detach()
 
             if isTrain:
-                pred_recur = self.SR_Compressor(SRL_input_probs, bert_emb,
+                pred_recur = self.SR_Compressor(SRL_input_probs, bert_emb.detach(),
                                                 flag_emb.detach(), word_id_emb, predicates_1D, seq_len, para=False,
                                                 use_bert=True)
 
