@@ -419,7 +419,7 @@ if __name__ == '__main__':
                 #opt_G.zero_grad()
                 # (loss+loss_2 + copy_loss + copy_loss_fr).backward()
                 #G_loss.backward()
-                opt_G.step()
+                #opt_G.step()
                 
                 
                 if batch_i % 50 == 0:
