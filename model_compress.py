@@ -199,6 +199,29 @@ class SR_Matcher(nn.Module):
 
         return scores
 
+class Discriminator(nn.Module):
+    def __init__(self, model_params):
+        super(Discriminator, self).__init__()
+        self.emb_dim = 200
+        self.dis_hid_dim = 100
+        self.dis_layers = 1
+        self.dis_input_dropout = 0.2
+        self.dis_dropout = 0.2
+        layers = [nn.Dropout(self.dis_input_dropout)]
+        for i in range(self.dis_layers + 1):
+            input_dim = self.emb_dim if i == 0 else self.dis_hid_dim
+            output_dim = 1 if i == self.dis_layers else self.dis_hid_dim
+            layers.append(nn.Linear(input_dim, output_dim))
+            if i < self.dis_layers:
+                layers.append(nn.LeakyReLU(0.2))
+                layers.append(nn.Dropout(self.dis_dropout))
+        layers.append(nn.Sigmoid())
+        self.layers = nn.Sequential(*layers)
+
+    def forward(self, x):
+        assert x.dim() == 2 and x.size(1) == self.emb_dim
+        return self.layers(x).view(-1)
+
 
 class SR_Model(nn.Module):
     def __init__(self, model_params):
@@ -262,6 +285,12 @@ class SR_Model(nn.Module):
         self.SR_Labeler = SR_Labeler(model_params)
         self.SR_Compressor = SR_Compressor(model_params)
         self.SR_Matcher = SR_Matcher(model_params)
+
+        self.Discriminator = Discriminator(model_params)
+        self.real = np.random.uniform(0.7, 1.0)  # 1
+        self.fake = np.random.uniform(0.0, 0.3)  # 0
+
+
         self.model = BertModel.from_pretrained('bert-base-multilingual-cased')
         for name, param in self.model.named_parameters():
             param.requires_grad = False
@@ -490,10 +519,23 @@ class SR_Model(nn.Module):
 
             pred_bert_fr = bert_emb_fr[np.arange(0, self.batch_size), predicates_1D_fr]
             pred_bert_en = bert_emb_en[np.arange(0, self.batch_size), predicates_1D]
-            diff = self.bert_NonlinearTrans(pred_bert_en).detach()-self.bert_NonlinearTrans(pred_bert_fr)
-            loss = torch.abs(diff)
-            loss = loss.sum()/(self.batch_size*200)
-            return loss
+            #diff = self.bert_NonlinearTrans(pred_bert_en).detach()-self.bert_NonlinearTrans(pred_bert_fr)
+            #loss = torch.abs(diff)
+            #loss = loss.sum()/(self.batch_size*200)
+            x_D_real = self.bert_NonlinearTrans(pred_bert_en.detach()).view(-1, 200)
+            x_D_fake = self.bert_NonlinearTrans(pred_bert_fr.detach()).view(-1,200)
+            en_preds = self.Discriminator(get_torch_variable_from_np(x_D_real.data))
+            real_labels = torch.empty(*en_preds.size()).fill_(self.real).type_as(en_preds)
+            D_loss_real = F.binary_cross_entropy(en_preds, real_labels)
+            fr_preds = self.Discriminator(get_torch_variable_from_np(x_D_fake.data))
+            fake_labels = torch.empty(*fr_preds.size()).fill_(self.fake).type_as(fr_preds)
+            D_loss_fake = F.binary_cross_entropy(fr_preds, fake_labels)
+            D_loss = 0.5 * (D_loss_real + D_loss_fake)
+
+            #fake_labels = torch.empty(*preds.size()).fill_(self.real).type_as(preds)
+            G_loss = F.binary_cross_entropy(fr_preds, real_labels)
+
+            return D_loss, G_loss
 
     def parallel_train(self, batch_input, use_bert, isTrain=True):
         unlabeled_data_en, unlabeled_data_fr = batch_input
