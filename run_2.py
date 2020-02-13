@@ -416,9 +416,9 @@ if __name__ == '__main__':
                 opt_D.step()
                 #batch_size = 30
 
-                opt_G.zero_grad()
+                #opt_G.zero_grad()
                 # (loss+loss_2 + copy_loss + copy_loss_fr).backward()
-                G_loss.backward()
+                #G_loss.backward()
                 opt_G.step()
                 
                 
