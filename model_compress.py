@@ -287,8 +287,8 @@ class SR_Model(nn.Module):
         self.SR_Matcher = SR_Matcher(model_params)
 
         self.Discriminator = Discriminator(model_params)
-        self.real = np.random.uniform(0.7, 1.0)  # 1
-        self.fake = np.random.uniform(0.0, 0.3)  # 0
+        self.real = 1#np.random.uniform(0.99, 1.0)  # 1
+        self.fake = 0#np.random.uniform(0.0, 0.01)  # 0
 
 
         self.model = BertModel.from_pretrained('bert-base-multilingual-cased')
