@@ -418,7 +418,7 @@ if __name__ == '__main__':
 
                 opt_G.zero_grad()
                 #(loss+loss_2 + copy_loss + copy_loss_fr).backward()
-                0.1*G_loss.backward()
+                (0.1*G_loss).backward()
                 opt_G.step()
                 
                 
