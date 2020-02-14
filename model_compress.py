@@ -297,16 +297,14 @@ class SR_Model(nn.Module):
         self.model.to(device)
         self.model.eval()
 
-        self.Fr_LinearTrans = nn.Sequential(nn.Linear(768, 1000),
-                                    nn.ReLU(),
-                                    nn.Linear(1000, 768))
+        self.Fr_LinearTrans = nn.Linear(768, 768)
         self.bert_NonlinearTrans = nn.Sequential(nn.Linear(768, 400),
                                     nn.ReLU(),
                                     nn.Linear(400, 200),
                                     nn.ReLU())
 
-        #self.Fr_LinearTrans.weight.data.copy_(
-        #    torch.from_numpy(np.eye(768, 768, dtype="float32")))
+        self.Fr_LinearTrans.weight.data.copy_(
+            torch.from_numpy(np.eye(768, 768, dtype="float32")))
 
 
     def copy_loss(self, output_SRL, pretrain_emb, flag_emb, seq_len):
@@ -722,6 +720,7 @@ class SR_Model(nn.Module):
         #bert_emb = self.bert_NonlinearTrans(bert_emb)
         if lang == "En":
             pretrain_emb = self.pretrained_embedding(pretrain_batch).detach()
+            bert_emb = gaussian(bert_emb, isTrain, 0, 0.1).detach()
         else:
             pretrain_emb = self.fr_pretrained_embedding(pretrain_batch).detach()
             bert_emb = self.Fr_LinearTrans(bert_emb).detach()
