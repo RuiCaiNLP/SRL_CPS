@@ -147,7 +147,7 @@ class SR_Compressor(nn.Module):
 class SR_Matcher(nn.Module):
     def __init__(self, model_params):
         super(SR_Matcher, self).__init__()
-        self.dropout_word_1 = nn.Dropout(p=0.3)
+        self.dropout_word_1 = nn.Dropout(p=0.0)
         self.dropout_word_2 = nn.Dropout(p=0.0)
         self.mlp_size = 300
         self.dropout_mlp = model_params['dropout_mlp']
@@ -192,7 +192,6 @@ class SR_Matcher(nn.Module):
             combine = self.compress_word(torch.cat((pretrained_emb, word_id_emb), 2))
         else:
             combine = self.compress_bert(pretrained_emb)
-        combine = self.dropout_word_2(combine)
         combine = combine.unsqueeze(2).expand(self.batch_size, seq_len, self.target_vocab_size-1, 20)
         scores = self.scorer(torch.cat((role_hidden, combine), 3)).view(self.batch_size * seq_len,
                                                                         (self.target_vocab_size - 1))
@@ -305,6 +304,7 @@ class SR_Model(nn.Module):
 
         self.Fr_LinearTrans.weight.data.copy_(
             torch.from_numpy(np.eye(768, 768, dtype="float32")))
+
 
 
     def copy_loss(self, output_SRL, pretrain_emb, flag_emb, seq_len):
@@ -524,7 +524,7 @@ class SR_Model(nn.Module):
             #loss = loss.sum()/(self.batch_size*200)
             #x_D_real = self.bert_NonlinearTrans(pred_bert_en.detach()).view(-1, 200)
             #x_D_fake = self.bert_NonlinearTrans(pred_bert_fr.detach()).view(-1,200)
-            x_D_real = pred_bert_en.detach().view(-1, 768)
+            x_D_real = self.Fr_LinearTrans(pred_bert_en.detach()).view(-1, 768)
             x_D_fake = self.Fr_LinearTrans(pred_bert_fr.detach()).view(-1,768)
             en_preds = self.Discriminator(x_D_real.detach())
             real_labels = torch.empty(*en_preds.size()).fill_(self.real).type_as(en_preds)
@@ -535,9 +535,13 @@ class SR_Model(nn.Module):
             D_loss = 0.5 * (D_loss_real + D_loss_fake)
 
             #fake_labels = torch.empty(*preds.size()).fill_(self.real).type_as(preds)
+            en_preds = self.Discriminator(x_D_real)
+            real_labels = torch.empty(*en_preds.size()).fill_(0.5).type_as(en_preds)
+            G_loss_real = F.binary_cross_entropy(en_preds, real_labels)
             fr_preds = self.Discriminator(x_D_fake)
-            G_loss = F.binary_cross_entropy(fr_preds, real_labels)
-
+            fake_labels = torch.empty(*fr_preds.size()).fill_(0.5).type_as(fr_preds)
+            G_loss_fake = F.binary_cross_entropy(fr_preds, fake_labels)
+            G_loss = 0.5 * (G_loss_real + G_loss_fake)
             return D_loss, G_loss
 
     def parallel_train(self, batch_input, use_bert, isTrain=True):
@@ -718,14 +722,14 @@ class SR_Model(nn.Module):
 
             bert_emb = bert_emb.detach()
         #bert_emb = self.bert_NonlinearTrans(bert_emb)
+
         if lang == "En":
             pretrain_emb = self.pretrained_embedding(pretrain_batch).detach()
             bert_emb = gaussian(bert_emb, isTrain, 0, 0.1).detach()
         else:
             pretrain_emb = self.fr_pretrained_embedding(pretrain_batch).detach()
-            bert_emb = self.Fr_LinearTrans(bert_emb).detach()
 
-
+        bert_emb = self.Fr_LinearTrans(bert_emb).detach()
         seq_len = flag_emb.shape[1]
         if not use_bert:
             SRL_output = self.SR_Labeler(pretrain_emb, flag_emb, predicates_1D, seq_len, para=False)
