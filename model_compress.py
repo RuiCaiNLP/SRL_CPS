@@ -297,12 +297,15 @@ class SR_Model(nn.Module):
         self.model.eval()
 
         self.Fr_LinearTrans = nn.Linear(768, 768)
+        self.En_LinearTrans = nn.Linear(768, 768)
         self.bert_NonlinearTrans = nn.Sequential(nn.Linear(768, 400),
                                     nn.ReLU(),
                                     nn.Linear(400, 200),
                                     nn.ReLU())
 
         self.Fr_LinearTrans.weight.data.copy_(
+            torch.from_numpy(np.eye(768, 768, dtype="float32")))
+        self.En_LinearTrans.weight.data.copy_(
             torch.from_numpy(np.eye(768, 768, dtype="float32")))
 
 
@@ -524,7 +527,7 @@ class SR_Model(nn.Module):
             #loss = loss.sum()/(self.batch_size*200)
             #x_D_real = self.bert_NonlinearTrans(pred_bert_en.detach()).view(-1, 200)
             #x_D_fake = self.bert_NonlinearTrans(pred_bert_fr.detach()).view(-1,200)
-            x_D_real = self.Fr_LinearTrans(pred_bert_en.detach()).view(-1, 768)
+            x_D_real = self.En_LinearTrans(pred_bert_en.detach()).view(-1, 768)
             x_D_fake = self.Fr_LinearTrans(pred_bert_fr.detach()).view(-1,768)
             en_preds = self.Discriminator(x_D_real.detach())
             real_labels = torch.empty(*en_preds.size()).fill_(self.real).type_as(en_preds)
@@ -726,10 +729,10 @@ class SR_Model(nn.Module):
         if lang == "En":
             pretrain_emb = self.pretrained_embedding(pretrain_batch).detach()
             bert_emb = gaussian(bert_emb, isTrain, 0, 0.1).detach()
+            bert_emb = self.En_LinearTrans(bert_emb).detach()
         else:
             pretrain_emb = self.fr_pretrained_embedding(pretrain_batch).detach()
-
-        bert_emb = self.Fr_LinearTrans(bert_emb).detach()
+            bert_emb = self.Fr_LinearTrans(bert_emb).detach()
         seq_len = flag_emb.shape[1]
         if not use_bert:
             SRL_output = self.SR_Labeler(pretrain_emb, flag_emb, predicates_1D, seq_len, para=False)
