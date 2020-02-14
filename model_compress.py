@@ -46,7 +46,7 @@ class SR_Labeler(nn.Module):
                                     bidirectional=True,
                                     bias=True, batch_first=True)
 
-        self.bilstm_bert = nn.LSTM(input_size=200 + self.flag_emb_size,
+        self.bilstm_bert = nn.LSTM(input_size=768 + self.flag_emb_size,
                                    hidden_size=self.bilstm_hidden_size, num_layers=self.bilstm_num_layers,
                                    bidirectional=True,
                                    bias=True, batch_first=True)
@@ -115,7 +115,7 @@ class SR_Compressor(nn.Module):
                                          bidirectional=True,
                                          bias=True, batch_first=True)
 
-        self.bilstm_layer_bert = nn.LSTM(input_size=200 + self.target_vocab_size + 0 * self.flag_emb_size,
+        self.bilstm_layer_bert = nn.LSTM(input_size=768 + self.target_vocab_size + 0 * self.flag_emb_size,
                                          hidden_size=(self.target_vocab_size-1) * 10, num_layers=2,
                                          bidirectional=True,
                                          bias=True, batch_first=True)
@@ -161,7 +161,7 @@ class SR_Matcher(nn.Module):
         self.bilstm_num_layers = model_params['bilstm_num_layers']
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
         self.compress_word = nn.Sequential(nn.Linear(300 + 2 * self.flag_emb_size, 20), nn.ReLU())
-        self.compress_bert = nn.Sequential(nn.Linear(200 + 0 * self.flag_emb_size, 20), nn.ReLU())
+        self.compress_bert = nn.Sequential(nn.Linear(768 + 0 * self.flag_emb_size, 20), nn.ReLU())
         self.scorer = nn.Sequential(nn.Linear(40, 20),
                                     nn.ReLU(),
                                     nn.Dropout(0.2),
@@ -202,7 +202,7 @@ class SR_Matcher(nn.Module):
 class Discriminator(nn.Module):
     def __init__(self, model_params):
         super(Discriminator, self).__init__()
-        self.emb_dim = 200
+        self.emb_dim = 768
         self.dis_hid_dim = 100
         self.dis_layers = 1
         self.dis_input_dropout = 0.2
@@ -524,8 +524,8 @@ class SR_Model(nn.Module):
             #loss = loss.sum()/(self.batch_size*200)
             #x_D_real = self.bert_NonlinearTrans(pred_bert_en.detach()).view(-1, 200)
             #x_D_fake = self.bert_NonlinearTrans(pred_bert_fr.detach()).view(-1,200)
-            x_D_real = pred_bert_en.detach().view(-1, 200)
-            x_D_fake = self.Fr_LinearTrans(pred_bert_fr.detach()).view(-1,200)
+            x_D_real = pred_bert_en.detach().view(-1, 768)
+            x_D_fake = self.Fr_LinearTrans(pred_bert_fr.detach()).view(-1,768)
             en_preds = self.Discriminator(x_D_real.detach())
             real_labels = torch.empty(*en_preds.size()).fill_(self.real).type_as(en_preds)
             D_loss_real = F.binary_cross_entropy(en_preds, real_labels)
