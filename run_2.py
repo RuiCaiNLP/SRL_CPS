@@ -412,13 +412,13 @@ if __name__ == '__main__':
                                                     self_constrain=False, use_bert=use_bert)
                 opt_D.zero_grad()
                 #(loss+loss_2 + copy_loss + copy_loss_fr).backward()
-                (0.01*D_loss).backward()
+                (1.*D_loss).backward()
                 opt_D.step()
                 #batch_size = 30
 
                 opt_G.zero_grad()
                 #(loss+loss_2 + copy_loss + copy_loss_fr).backward()
-                (0.01*G_loss).backward()
+                (1.*G_loss).backward()
                 opt_G.step()
                 
                 
