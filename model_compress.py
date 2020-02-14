@@ -522,8 +522,10 @@ class SR_Model(nn.Module):
             #diff = self.bert_NonlinearTrans(pred_bert_en).detach()-self.bert_NonlinearTrans(pred_bert_fr)
             #loss = torch.abs(diff)
             #loss = loss.sum()/(self.batch_size*200)
-            x_D_real = self.bert_NonlinearTrans(pred_bert_en.detach()).view(-1, 200)
-            x_D_fake = self.bert_NonlinearTrans(pred_bert_fr.detach()).view(-1,200)
+            #x_D_real = self.bert_NonlinearTrans(pred_bert_en.detach()).view(-1, 200)
+            #x_D_fake = self.bert_NonlinearTrans(pred_bert_fr.detach()).view(-1,200)
+            x_D_real = pred_bert_en.detach().view(-1, 200)
+            x_D_fake = self.Fr_LinearTrans(pred_bert_fr.detach()).view(-1,200)
             en_preds = self.Discriminator(x_D_real.detach())
             real_labels = torch.empty(*en_preds.size()).fill_(self.real).type_as(en_preds)
             D_loss_real = F.binary_cross_entropy(en_preds, real_labels)
@@ -715,11 +717,12 @@ class SR_Model(nn.Module):
 
 
             bert_emb = bert_emb.detach()
-        bert_emb = self.bert_NonlinearTrans(bert_emb)
+        #bert_emb = self.bert_NonlinearTrans(bert_emb)
         if lang == "En":
             pretrain_emb = self.pretrained_embedding(pretrain_batch).detach()
         else:
             pretrain_emb = self.fr_pretrained_embedding(pretrain_batch).detach()
+            bert_emb = self.Fr_LinearTrans(bert_emb).detach()
 
 
         seq_len = flag_emb.shape[1]
