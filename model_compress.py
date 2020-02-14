@@ -520,7 +520,7 @@ class SR_Model(nn.Module):
             bert_emb_en = bert_emb_en.detach()
 
             pred_bert_fr = bert_emb_fr[np.arange(0, self.batch_size), predicates_1D_fr]
-            pred_bert_en = bert_emb_en[np.arange(0, self.batch_size), predicates_1D]
+            pred_bert_en = bert_emb_en_noise[np.arange(0, self.batch_size), predicates_1D]
             #diff = self.bert_NonlinearTrans(pred_bert_en).detach()-self.bert_NonlinearTrans(pred_bert_fr)
             #loss = torch.abs(diff)
             #loss = loss.sum()/(self.batch_size*200)
