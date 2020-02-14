@@ -745,7 +745,7 @@ class SR_Model(nn.Module):
                                                 flag_emb.detach(), word_id_emb, predicates_1D, seq_len, para=False,
                                                 use_bert=True)
 
-                output_word = self.SR_Matcher(pred_recur, bert_emb, flag_emb.detach(), word_id_emb.detach(), seq_len, copy=True,
+                output_word = self.SR_Matcher(pred_recur, bert_emb.detach(), flag_emb.detach(), word_id_emb.detach(), seq_len, copy=True,
                                               para=False, use_bert=True)
             else:
                 pred_recur = self.SR_Compressor(SRL_input_probs, bert_emb,
