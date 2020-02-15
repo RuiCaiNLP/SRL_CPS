@@ -530,7 +530,7 @@ class SR_Model(nn.Module):
             #diff = self.bert_NonlinearTrans(pred_bert_en).detach()-self.bert_NonlinearTrans(pred_bert_fr)
             #loss = torch.abs(diff)
             #loss = loss.sum()/(self.batch_size*200)
-            x_D_real = self.bert_NonlinearTrans(pred_bert_en.detach().view(-1, 768))
+            x_D_real = pred_bert_en.detach().view(-1, 768)#self.bert_NonlinearTrans(pred_bert_en.detach().view(-1, 768))
             x_D_fake = self.bert_NonlinearTrans(pred_bert_fr.detach().view(-1, 768))
             #x_D_real = self.En_LinearTrans(pred_bert_en.detach()).view(-1, 768)
             #x_D_fake = self.Fr_LinearTrans(pred_bert_fr.detach()).view(-1, 768)
@@ -547,10 +547,10 @@ class SR_Model(nn.Module):
             real_labels = torch.empty(*en_preds.size()).fill_(0.5).type_as(en_preds)
             G_loss_real = F.binary_cross_entropy(en_preds, real_labels)
             fr_preds = self.Discriminator(x_D_fake)
-            fake_labels = torch.empty(*fr_preds.size()).fill_(0.5).type_as(fr_preds)
+            fake_labels = torch.empty(*fr_preds.size()).fill_(1).type_as(fr_preds)
             G_loss_fake = F.binary_cross_entropy(fr_preds, fake_labels)
             G_loss = 0.5 * (G_loss_real + G_loss_fake)
-            return D_loss, G_loss
+            return D_loss, G_loss_fake
 
     def parallel_train(self, batch_input, use_bert, isTrain=True):
         unlabeled_data_en, unlabeled_data_fr = batch_input
@@ -738,7 +738,7 @@ class SR_Model(nn.Module):
         else:
             pretrain_emb = self.fr_pretrained_embedding(pretrain_batch).detach()
             #bert_emb = self.Fr_LinearTrans(bert_emb).detach()
-        bert_emb = self.bert_NonlinearTrans(bert_emb)
+            bert_emb = self.bert_NonlinearTrans(bert_emb)
         seq_len = flag_emb.shape[1]
         if not use_bert:
             SRL_output = self.SR_Labeler(pretrain_emb, flag_emb, predicates_1D, seq_len, para=False)
