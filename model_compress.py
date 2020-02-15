@@ -203,7 +203,7 @@ class Discriminator(nn.Module):
         super(Discriminator, self).__init__()
         self.emb_dim = 768
         self.dis_hid_dim = 768
-        self.dis_layers = 2
+        self.dis_layers = 1
         self.dis_input_dropout = 0.2
         self.dis_dropout = 0.2
         layers = [nn.Dropout(self.dis_input_dropout)]
