@@ -307,7 +307,11 @@ class SR_Model(nn.Module):
         self.bert_NonlinearTrans = nn.Sequential(nn.Linear(768, 768),
                                     nn.LeakyReLU(0.2),
                                     nn.Dropout(0.2),
-                                    nn.Linear(768, 768))
+                                    nn.Linear(768, 768),
+                                     nn.LeakyReLU(0.2),
+                                     nn.Dropout(0.2),
+                                     nn.Linear(768, 768)
+                                                 )
 
         #self.Fr_LinearTrans.weight.data.copy_(
         #    torch.from_numpy(np.eye(768, 768, dtype="float32")))
