@@ -305,7 +305,7 @@ class SR_Model(nn.Module):
                                     nn.Linear(400, 200),
                                     nn.ReLU())
         self.bert_NonlinearTrans = nn.Sequential(nn.Linear(768, 768),
-                                    nn.LeakyReLU(0.2),
+                                    nn.ReLU(),
 
                                     nn.Linear(768, 768))
 
