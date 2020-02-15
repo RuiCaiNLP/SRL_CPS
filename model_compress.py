@@ -304,9 +304,10 @@ class SR_Model(nn.Module):
                                     nn.ReLU(),
                                     nn.Linear(400, 200),
                                     nn.ReLU())
-        self.bert_NonlinearTrans = nn.Sequential(nn.Linear(768, 1000),
-                                    nn.ReLU(),
-                                    nn.Linear(1000, 768))
+        self.bert_NonlinearTrans = nn.Sequential(nn.Linear(768, 768),
+                                    nn.LeakyReLU(0.2),
+                                    nn.Dropout(0.2),
+                                    nn.Linear(768, 768))
 
         #self.Fr_LinearTrans.weight.data.copy_(
         #    torch.from_numpy(np.eye(768, 768, dtype="float32")))
@@ -698,8 +699,8 @@ class SR_Model(nn.Module):
             #loss, loss_2, copy_loss_en, copy_loss_fr = self.parallel_train_(batch_input, use_bert)
 
             #return loss, loss_2, copy_loss_en, copy_loss_fr
-            loss = self.word_trans(batch_input, use_bert)
-            return loss
+            D_loss, G_loss = self.word_trans(batch_input, use_bert)
+            return D_loss, G_loss
 
         pretrain_batch = get_torch_variable_from_np(batch_input['pretrain'])
         predicates_1D = batch_input['predicates_idx']
