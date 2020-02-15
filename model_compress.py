@@ -202,8 +202,8 @@ class Discriminator(nn.Module):
     def __init__(self, model_params):
         super(Discriminator, self).__init__()
         self.emb_dim = 768
-        self.dis_hid_dim = 100
-        self.dis_layers = 1
+        self.dis_hid_dim = 768
+        self.dis_layers = 2
         self.dis_input_dropout = 0.2
         self.dis_dropout = 0.2
         layers = [nn.Dropout(self.dis_input_dropout)]
@@ -305,8 +305,8 @@ class SR_Model(nn.Module):
                                     nn.Linear(400, 200),
                                     nn.ReLU())
         self.bert_NonlinearTrans = nn.Sequential(nn.Linear(768, 768),
-                                    nn.ReLU(),
-
+                                    nn.LeakyReLU(0.2),
+                                    nn.Dropout(0.2),
                                     nn.Linear(768, 768))
 
         #self.Fr_LinearTrans.weight.data.copy_(
