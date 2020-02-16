@@ -343,8 +343,8 @@ if __name__ == '__main__':
         criterion_word = nn.CrossEntropyLoss()
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(srl_model.parameters(), lr=learning_rate)
-        opt_D = optim.Adam(srl_model.Discriminator.parameters(), lr=learning_rate)
-        opt_G = optim.Adam(srl_model.bert_NonlinearTrans.parameters(), lr=learning_rate)
+        #opt_D = optim.Adam(srl_model.Discriminator.parameters(), lr=learning_rate)
+        opt_G = optim.Adam(srl_model.Fr2En_Trans.parameters(), lr=learning_rate)
 
         print(srl_model)
 
@@ -408,23 +408,17 @@ if __name__ == '__main__':
                     unlabeled_data_fr = next(unlabeled_Generator_Fr)
 
                 #loss, loss_2, copy_loss, copy_loss_fr =
-                D_loss, G_loss =  srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True,
+                l2loss =  srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True,
                                                     self_constrain=False, use_bert=use_bert)
-                opt_D.zero_grad()
-                #(loss+loss_2 + copy_loss + copy_loss_fr).backward()
-                (1.*D_loss).backward()
-                opt_D.step()
-                #batch_size = 30
-
                 opt_G.zero_grad()
                 #(loss+loss_2 + copy_loss + copy_loss_fr).backward()
-                (1.*G_loss).backward()
+                (l2loss).backward()
                 opt_G.step()
                 
                 
                 if batch_i % 50 == 0:
                     #print("para loss:", batch_i, loss.item(), loss_2.item(), copy_loss.item(), copy_loss_fr.item())
-                    print('trans loss', D_loss, G_loss)
+                    print('trans loss', l2loss)
                     #print(coverage)
 
                 if batch_i > 0 and batch_i % show_steps == 0:
