@@ -206,7 +206,7 @@ class Discriminator(nn.Module):
         self.dis_layers = 1
         self.dis_input_dropout = 0.2
         self.dis_dropout = 0.2
-        layers = [nn.Dropout(self.dis_input_dropout)]
+        layers = [nn.Dropout(self.dis_input_dropout), nn.Tanh()]
         for i in range(self.dis_layers + 1):
             input_dim = self.emb_dim if i == 0 else self.dis_hid_dim
             output_dim = 1 if i == self.dis_layers else self.dis_hid_dim
@@ -307,11 +307,8 @@ class SR_Model(nn.Module):
         self.bert_NonlinearTrans = nn.Sequential(nn.Linear(768, 768),
                                     nn.LeakyReLU(0.2),
                                     nn.Dropout(0.2),
-                                    nn.Linear(768, 768),
-                                     nn.LeakyReLU(0.2),
-                                     nn.Dropout(0.2),
-                                     nn.Linear(768, 768)
-                                                 )
+                                    nn.Linear(768, 768)
+                                                        )
 
         #self.Fr_LinearTrans.weight.data.copy_(
         #    torch.from_numpy(np.eye(768, 768, dtype="float32")))
