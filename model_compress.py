@@ -740,7 +740,7 @@ class SR_Model(nn.Module):
         else:
             pretrain_emb = self.fr_pretrained_embedding(pretrain_batch).detach()
             #bert_emb = self.Fr_LinearTrans(bert_emb).detach()
-            bert_emb = self.bert_NonlinearTrans(bert_emb)
+            bert_emb = self.bert_NonlinearTrans(bert_emb).detach()
         seq_len = flag_emb.shape[1]
         if not use_bert:
             SRL_output = self.SR_Labeler(pretrain_emb, flag_emb, predicates_1D, seq_len, para=False)
