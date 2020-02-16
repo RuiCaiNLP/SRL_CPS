@@ -537,10 +537,10 @@ class SR_Model(nn.Module):
             #x_D_real = self.En_LinearTrans(pred_bert_en.detach()).view(-1, 768)
             #x_D_fake = self.Fr_LinearTrans(pred_bert_fr.detach()).view(-1, 768)
             en_preds = self.Discriminator(x_D_real.detach())
-            real_labels = torch.empty(*en_preds.size()).fill_(1).type_as(en_preds)
+            real_labels = torch.empty(*en_preds.size()).fill_(0.8).type_as(en_preds)
             D_loss_real = F.binary_cross_entropy(en_preds, real_labels)
             fr_preds = self.Discriminator(x_D_fake.detach())
-            fake_labels = torch.empty(*fr_preds.size()).fill_(0).type_as(fr_preds)
+            fake_labels = torch.empty(*fr_preds.size()).fill_(0.2).type_as(fr_preds)
             D_loss_fake = F.binary_cross_entropy(fr_preds, fake_labels)
             D_loss = 0.5 * (D_loss_real + D_loss_fake)
 
@@ -549,7 +549,7 @@ class SR_Model(nn.Module):
             real_labels = torch.empty(*en_preds.size()).fill_(0.5).type_as(en_preds)
             G_loss_real = F.binary_cross_entropy(en_preds, real_labels)
             fr_preds = self.Discriminator(x_D_fake)
-            fake_labels = torch.empty(*fr_preds.size()).fill_(1).type_as(fr_preds)
+            fake_labels = torch.empty(*fr_preds.size()).fill_(0.8).type_as(fr_preds)
             G_loss_fake = F.binary_cross_entropy(fr_preds, fake_labels)
             G_loss = 0.5 * (G_loss_real + G_loss_fake)
             return D_loss, G_loss_fake
