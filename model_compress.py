@@ -557,7 +557,7 @@ class SR_Model(nn.Module):
             #D_loss_fake = F.binary_cross_entropy(fr_preds, fake_labels)
             #D_loss = 0.5 * (D_loss_real + D_loss_fake)
             preds = torch.cat((en_preds, fr_preds), 0)
-            labels = torch.cat((real_labels, fake_labels))
+            labels = torch.cat((real_labels, fake_labels)).to(device)
             criterion = nn.CrossEntropyLoss()
             loss = criterion(preds, labels)
             return loss
