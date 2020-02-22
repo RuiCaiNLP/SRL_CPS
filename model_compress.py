@@ -6,6 +6,8 @@ import sys
 # from torch.autograd import Variable
 import torch.nn.functional as F
 from transformers import *
+from pytorch_revgrad import RevGrad
+
 
 # from utils import USE_CUDA
 from utils import get_torch_variable_from_np, get_data
@@ -201,24 +203,24 @@ class SR_Matcher(nn.Module):
 class Discriminator(nn.Module):
     def __init__(self, model_params):
         super(Discriminator, self).__init__()
-        self.emb_dim = 768
-        self.dis_hid_dim = 100
+        self.emb_dim = 256
+        self.dis_hid_dim = 200
         self.dis_layers = 1
         self.dis_input_dropout = 0.2
         self.dis_dropout = 0.2
-        layers = [nn.Dropout(self.dis_input_dropout), nn.Tanh()]
+        layers = [RevGrad()]
         for i in range(self.dis_layers + 1):
             input_dim = self.emb_dim if i == 0 else self.dis_hid_dim
-            output_dim = 1 if i == self.dis_layers else self.dis_hid_dim
+            output_dim = 2 if i == self.dis_layers else self.dis_hid_dim
             layers.append(nn.Linear(input_dim, output_dim))
             if i < self.dis_layers:
                 layers.append(nn.LeakyReLU(0.2))
                 layers.append(nn.Dropout(self.dis_dropout))
-        layers.append(nn.Sigmoid())
+        #layers.append(nn.Sigmoid())
         self.layers = nn.Sequential(*layers)
 
     def forward(self, x):
-        assert x.dim() == 2 and x.size(1) == self.emb_dim
+        #assert x.dim() == 2 and x.size(1) == self.emb_dim
         return self.layers(x).view(-1)
 
 
@@ -314,7 +316,8 @@ class SR_Model(nn.Module):
                                         nn.LeakyReLU(0.2),
                                         nn.Dropout(0.2),
                                         nn.Linear(768, 768),
-                                        nn.Tanh())
+                                        nn.Tanh(),
+                                         )
 
         #self.Fr_LinearTrans.weight.data.copy_(
         #    torch.from_numpy(np.eye(768, 768, dtype="float32")))
@@ -535,35 +538,30 @@ class SR_Model(nn.Module):
 
             pred_bert_fr = bert_emb_fr[np.arange(0, self.batch_size), predicates_1D_fr]
             pred_bert_en = bert_emb_en[np.arange(0, self.batch_size), predicates_1D]
-            transed_bert_fr = self.Fr2En_Trans(pred_bert_fr)
+            #transed_bert_fr = self.Fr2En_Trans(pred_bert_fr)
             En_Extracted = self.bert_FeatureExtractor(pred_bert_en)
-            Fr_Extracted = self.bert_FeatureExtractor(transed_bert_fr)
-            loss = nn.MSELoss()
-            l2loss = loss(Fr_Extracted, En_Extracted)
-            return l2loss
-            """
-            x_D_real = pred_bert_en.detach().view(-1, 768)#self.bert_NonlinearTrans(pred_bert_en.detach().view(-1, 768))
-            x_D_fake = self.bert_NonlinearTrans(pred_bert_fr.detach().view(-1, 768))
+            Fr_Extracted = self.bert_FeatureExtractor(pred_bert_fr)
+            #loss = nn.MSELoss()
+            #l2loss = loss(Fr_Extracted, En_Extracted)
+            #return l2loss
+
+            x_D_real = En_Extracted.view(-1, 256)#self.bert_NonlinearTrans(pred_bert_en.detach().view(-1, 768))
+            x_D_fake = Fr_Extracted.view(-1, 256)
             #x_D_real = self.En_LinearTrans(pred_bert_en.detach()).view(-1, 768)
             #x_D_fake = self.Fr_LinearTrans(pred_bert_fr.detach()).view(-1, 768)
-            en_preds = self.Discriminator(x_D_real.detach())
-            real_labels = torch.empty(*en_preds.size()).fill_(0.8).type_as(en_preds)
-            D_loss_real = F.binary_cross_entropy(en_preds, real_labels)
-            fr_preds = self.Discriminator(x_D_fake.detach())
-            fake_labels = torch.empty(*fr_preds.size()).fill_(0.2).type_as(fr_preds)
-            D_loss_fake = F.binary_cross_entropy(fr_preds, fake_labels)
-            D_loss = 0.5 * (D_loss_real + D_loss_fake)
+            en_preds = self.Discriminator(x_D_real).view(self.batch_size, 2)
+            real_labels = torch.empty((30,1), dtype=torch.long).fill_(1).view(-1)
+            #D_loss_real = F.binary_cross_entropy(en_preds, real_labels)
+            fr_preds = self.Discriminator(x_D_fake).view(self.batch_size, 2)
+            fake_labels = torch.empty((30,1), dtype=torch.long).fill_(0).view(-1)
+            #D_loss_fake = F.binary_cross_entropy(fr_preds, fake_labels)
+            #D_loss = 0.5 * (D_loss_real + D_loss_fake)
+            preds = torch.cat((en_preds, fr_preds), 0)
+            labels = torch.cat((real_labels, fake_labels))
+            criterion = nn.CrossEntropyLoss()
+            loss = criterion(preds, labels)
+            return loss
 
-
-            en_preds = self.Discriminator(x_D_real)
-            real_labels = torch.empty(*en_preds.size()).fill_(0.5).type_as(en_preds)
-            G_loss_real = F.binary_cross_entropy(en_preds, real_labels)
-            fr_preds = self.Discriminator(x_D_fake)
-            fake_labels = torch.empty(*fr_preds.size()).fill_(0.8).type_as(fr_preds)
-            G_loss_fake = F.binary_cross_entropy(fr_preds, fake_labels)
-            G_loss = 0.5 * (G_loss_real + G_loss_fake)
-            return D_loss, G_loss_fake
-            """
 
     def parallel_train(self, batch_input, use_bert, isTrain=True):
         unlabeled_data_en, unlabeled_data_fr = batch_input
@@ -751,7 +749,7 @@ class SR_Model(nn.Module):
         else:
             pretrain_emb = self.fr_pretrained_embedding(pretrain_batch).detach()
             #bert_emb = self.Fr_LinearTrans(bert_emb).detach()
-            bert_emb = self.Fr2En_Trans(bert_emb).detach()
+            #bert_emb = self.Fr2En_Trans(bert_emb).detach()
         bert_emb = self.bert_FeatureExtractor(bert_emb)
         seq_len = flag_emb.shape[1]
         if not use_bert:

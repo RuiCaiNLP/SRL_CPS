@@ -344,7 +344,7 @@ if __name__ == '__main__':
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(srl_model.parameters(), lr=learning_rate)
         #opt_D = optim.Adam(srl_model.Discriminator.parameters(), lr=learning_rate)
-        opt_G = optim.Adam(srl_model.Fr2En_Trans.parameters(), lr=learning_rate)
+        #opt_G = optim.Adam(srl_model.Fr2En_Trans.parameters(), lr=learning_rate)
 
         print(srl_model)
 
@@ -410,10 +410,10 @@ if __name__ == '__main__':
                 #loss, loss_2, copy_loss, copy_loss_fr =
                 l2loss =  srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True,
                                                     self_constrain=False, use_bert=use_bert)
-                opt_G.zero_grad()
+                optimizer.zero_grad()
                 #(loss+loss_2 + copy_loss + copy_loss_fr).backward()
                 (l2loss).backward()
-                opt_G.step()
+                optimizer.step()
                 
                 
                 if batch_i % 50 == 0:
