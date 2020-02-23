@@ -540,7 +540,7 @@ class SR_Model(nn.Module):
             pred_bert_en = bert_emb_en[np.arange(0, self.batch_size), predicates_1D]
             #transed_bert_fr = self.Fr2En_Trans(pred_bert_fr)
             En_Extracted = self.bert_FeatureExtractor(pred_bert_en)
-            Fr_Extracted = self.bert_FeatureExtractor(pred_bert_fr)
+            Fr_Extracted = self.bert_FeatureExtractor(self.Fr2En_Trans(pred_bert_fr))
             #loss = nn.MSELoss()
             #l2loss = loss(Fr_Extracted, En_Extracted)
             #return l2loss
@@ -749,7 +749,7 @@ class SR_Model(nn.Module):
         else:
             pretrain_emb = self.fr_pretrained_embedding(pretrain_batch).detach()
             #bert_emb = self.Fr_LinearTrans(bert_emb).detach()
-            #bert_emb = self.Fr2En_Trans(bert_emb).detach()
+            bert_emb = self.Fr2En_Trans(bert_emb).detach()
         bert_emb = self.bert_FeatureExtractor(bert_emb)
         seq_len = flag_emb.shape[1]
         if not use_bert:
