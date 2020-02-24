@@ -208,7 +208,7 @@ class Discriminator(nn.Module):
         self.dis_layers = 1
         self.dis_input_dropout = 0.2
         self.dis_dropout = 0.2
-        layers = [RevGrad()]
+        layers = []#[RevGrad()]
         for i in range(self.dis_layers + 1):
             input_dim = self.emb_dim if i == 0 else self.dis_hid_dim
             output_dim = 2 if i == self.dis_layers else self.dis_hid_dim
@@ -539,8 +539,8 @@ class SR_Model(nn.Module):
             pred_bert_fr = bert_emb_fr[np.arange(0, self.batch_size), predicates_1D_fr]
             pred_bert_en = bert_emb_en[np.arange(0, self.batch_size), predicates_1D]
             #transed_bert_fr = self.Fr2En_Trans(pred_bert_fr)
-            En_Extracted = self.bert_FeatureExtractor(pred_bert_en)
-            Fr_Extracted = self.bert_FeatureExtractor(pred_bert_fr)
+            En_Extracted = self.bert_FeatureExtractor(pred_bert_en).detach()
+            Fr_Extracted = self.bert_FeatureExtractor(pred_bert_fr).detach()
             #loss = nn.MSELoss()
             #l2loss = loss(Fr_Extracted, En_Extracted)
             #return l2loss
