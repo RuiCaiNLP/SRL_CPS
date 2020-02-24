@@ -412,7 +412,7 @@ if __name__ == '__main__':
                                                     self_constrain=False, use_bert=use_bert)
                 optimizer.zero_grad()
                 #(loss+loss_2 + copy_loss + copy_loss_fr).backward()
-                (0.1*l2loss).backward()
+                (0.05*l2loss).backward()
                 optimizer.step()
                 
                 
