@@ -91,9 +91,9 @@ class SR_Labeler(nn.Module):
 class SR_Compressor(nn.Module):
     def __init__(self, model_params):
         super(SR_Compressor, self).__init__()
-        self.dropout_word = nn.Dropout(p=0.0)
-        self.dropout_hidden = nn.Dropout(p=0.0)
-        self.dropout_mlp = model_params['dropout_mlp']
+        #self.dropout_word = nn.Dropout(p=0.0)
+        #self.dropout_hidden = nn.Dropout(p=0.0)
+        #self.dropout_mlp = model_params['dropout_mlp']
         self.batch_size = model_params['batch_size']
 
         self.target_vocab_size = model_params['target_vocab_size']
@@ -149,10 +149,10 @@ class SR_Compressor(nn.Module):
 class SR_Matcher(nn.Module):
     def __init__(self, model_params):
         super(SR_Matcher, self).__init__()
-        self.dropout_word_1 = nn.Dropout(p=0.0)
-        self.dropout_word_2 = nn.Dropout(p=0.0)
+        #self.dropout_word_1 = nn.Dropout(p=0.0)
+        #self.dropout_word_2 = nn.Dropout(p=0.0)
         self.mlp_size = 300
-        self.dropout_mlp = model_params['dropout_mlp']
+        #self.dropout_mlp = model_params['dropout_mlp']
         self.batch_size = model_params['batch_size']
 
         self.target_vocab_size = model_params['target_vocab_size']
@@ -188,8 +188,8 @@ class SR_Matcher(nn.Module):
                                                                            10)
         role_hidden = torch.cat((forward_hidden, backward_hidden), 2)
         role_hidden = role_hidden.unsqueeze(1).expand(self.batch_size, seq_len, (self.target_vocab_size-1), 20)
-        if copy:
-            pretrained_emb = self.dropout_word_1(pretrained_emb)
+        #if copy:
+        #    pretrained_emb = self.dropout_word_1(pretrained_emb)
         if not use_bert:
             combine = self.compress_word(torch.cat((pretrained_emb, word_id_emb), 2))
         else:
@@ -298,26 +298,11 @@ class SR_Model(nn.Module):
         self.model.to(device)
         self.model.eval()
 
-        self.Fr_LinearTrans = nn.Sequential(nn.Linear(768, 400),
-                                    nn.ReLU(),
-                                    nn.Linear(400, 200),
-                                    nn.ReLU())
-        self.En_LinearTrans = nn.Sequential(nn.Linear(768, 400),
-                                    nn.ReLU(),
-                                    nn.Linear(400, 200),
-                                    nn.ReLU())
         self.bert_FeatureExtractor = nn.Sequential(nn.Linear(768, 512),
                                         nn.LeakyReLU(0.2),
-                                        nn.Dropout(0.2),
                                         nn.Linear(512, 256),
                                         nn.Tanh())
 
-        self.Fr2En_Trans = nn.Sequential(nn.Linear(768, 768),
-                                        nn.LeakyReLU(0.2),
-                                        nn.Dropout(0.2),
-                                        nn.Linear(768, 768),
-                                        nn.Tanh(),
-                                         )
 
         #self.Fr_LinearTrans.weight.data.copy_(
         #    torch.from_numpy(np.eye(768, 768, dtype="float32")))
