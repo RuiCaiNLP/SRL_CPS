@@ -301,7 +301,7 @@ class SR_Model(nn.Module):
         self.bert_FeatureExtractor = nn.Sequential(nn.Linear(768, 512),
                                         nn.LeakyReLU(0.2),
                                         nn.Linear(512, 256),
-                                        nn.Tanh())
+                                        nn.LeakyReLU(0.2))
 
 
         #self.Fr_LinearTrans.weight.data.copy_(
