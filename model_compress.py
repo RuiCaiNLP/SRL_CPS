@@ -220,7 +220,8 @@ class Discriminator(nn.Module):
         #layers.append(nn.Sigmoid())
         self.layers = nn.Sequential(*layers)
         """
-        self.Classifier = nn.Linear(256, 2)
+        self.Classifier = nn.Sequential(RevGrad(),
+                                        nn.Linear(256, 2))
     def forward(self, x):
         #assert x.dim() == 2 and x.size(1) == self.emb_dim
         return self.Classifier(x).view(-1)
