@@ -298,9 +298,9 @@ class SR_Model(nn.Module):
         self.model.to(device)
         self.model.eval()
 
-        self.bert_FeatureExtractor = nn.Sequential(nn.Linear(768, 512),
-                                        nn.LeakyReLU(0.2),
-                                        nn.Linear(512, 256),
+        self.bert_FeatureExtractor = nn.Sequential(nn.Linear(768, 256),
+                                        #nn.LeakyReLU(0.2),
+                                        #nn.Linear(512, 256),
                                         nn.LeakyReLU(0.2))
 
 
