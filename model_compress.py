@@ -203,6 +203,7 @@ class SR_Matcher(nn.Module):
 class Discriminator(nn.Module):
     def __init__(self, model_params):
         super(Discriminator, self).__init__()
+        """
         self.emb_dim = 256
         self.dis_hid_dim = 200
         self.dis_layers = 1
@@ -218,10 +219,11 @@ class Discriminator(nn.Module):
                 layers.append(nn.Dropout(self.dis_dropout))
         #layers.append(nn.Sigmoid())
         self.layers = nn.Sequential(*layers)
-
+        """
+        self.Classifier = nn.Linear(256, 2)
     def forward(self, x):
         #assert x.dim() == 2 and x.size(1) == self.emb_dim
-        return self.layers(x).view(-1)
+        return self.Classifier(x).view(-1)
 
 
 class SR_Model(nn.Module):
