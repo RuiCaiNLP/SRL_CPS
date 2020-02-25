@@ -527,8 +527,8 @@ class SR_Model(nn.Module):
             pred_bert_fr = bert_emb_fr[np.arange(0, self.batch_size), predicates_1D_fr]
             pred_bert_en = bert_emb_en[np.arange(0, self.batch_size), predicates_1D]
             #transed_bert_fr = self.Fr2En_Trans(pred_bert_fr)
-            En_Extracted = self.bert_FeatureExtractor(pred_bert_en).detach()
-            Fr_Extracted = self.bert_FeatureExtractor(pred_bert_fr).detach()
+            En_Extracted = self.bert_FeatureExtractor(pred_bert_en)
+            Fr_Extracted = self.bert_FeatureExtractor(pred_bert_fr)
             #loss = nn.MSELoss()
             #l2loss = loss(Fr_Extracted, En_Extracted)
             #return l2loss
