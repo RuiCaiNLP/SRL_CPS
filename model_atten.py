@@ -125,10 +125,15 @@ class SR_Matcher(nn.Module):
 
         self.bilstm_num_layers = model_params['bilstm_num_layers']
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
-        self.emb2vector = nn.Sequential(nn.Linear(self.pretrain_emb_size + self.flag_emb_size, 300),
+        self.bert_size = 768
+        self.emb2vector = nn.Sequential(nn.Linear(self.bert_size, 300),
                                         nn.ReLU(),
                                         nn.Linear(300, 200),
                                         nn.ReLU())
+        self.query_emb2vector = nn.Sequential(nn.Linear(self.bert_size, 300),
+                                                nn.ReLU(),
+                                                nn.Linear(300, 200),
+                                                nn.ReLU())
         self.matrix = nn.Parameter(
                     get_torch_variable_from_np(np.zeros((200, 200)).astype("float32")))
 

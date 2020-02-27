@@ -1,5 +1,5 @@
 from __future__ import print_function
-import model_compress
+import model_attention
 import data_utils
 import inter_utils
 import pickle
@@ -335,7 +335,7 @@ if __name__ == '__main__':
         }
 
         # build model
-        srl_model = model_compress.SR_Model(model_params)
+        srl_model = model_attention.SR_Model(model_params)
 
         if USE_CUDA:
             srl_model.cuda()
@@ -389,7 +389,7 @@ if __name__ == '__main__':
 
 
                 #batch_size=1
-
+                """
                 try:
                     unlabeled_data_en = next(unlabeled_Generator_En)
                     unlabeled_data_fr = next(unlabeled_Generator_Fr)
@@ -420,7 +420,7 @@ if __name__ == '__main__':
                     #print("para loss:", batch_i, loss.item(), loss_2.item(), copy_loss.item(), copy_loss_fr.item())
                     print('trans loss', l2loss)
                     #print(coverage)
-
+                """
                 if batch_i > 0 and batch_i % show_steps == 0:
                     srl_model.eval()
                     _, pred = torch.max(out, 1)
