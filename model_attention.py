@@ -179,7 +179,7 @@ class SR_Matcher(nn.Module):
     def forward(self, base_embs, query_embs, SRL_scores,  seq_len,  isTrain = False, para=False):
         query_vectors = self.query_emb2vector(query_embs).view(self.batch_size, seq_len, 200)
         base_vectors = self.base_emb2vector(base_embs).view(self.batch_size, seq_len, 200)
-        SRL_probs = SRL_scores.view(self.batch_size, seq_len, self.target_vocab_size)
+        SRL_scores = SRL_scores.view(self.batch_size, seq_len, self.target_vocab_size)
         base_vectors = base_vectors.view(self.batch_size * seq_len, 200)
         y = torch.mm(base_vectors, self.matrix)
         # B T2 V -> B V T2

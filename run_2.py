@@ -379,11 +379,11 @@ if __name__ == '__main__':
                 #_,  prediction_batch_variable = torch.max(out, 1)
                 loss = criterion(out, target_batch_variable)
 
-                #loss_word = criterion_word(out_word, target_batch_variable)
+                loss_word = criterion_word(out_word, target_batch_variable)
                 if batch_i % 50 == 0:
-                    print("epoch:", epoch, batch_i, loss.item(), copy_loss.item())
+                    print("epoch:", epoch, batch_i, loss.item(), loss_word, copy_loss.item())
                 optimizer.zero_grad()
-                (loss + copy_loss).backward()
+                (loss + loss_word).backward()
                 optimizer.step()
                 sys.stdout.flush()
 
