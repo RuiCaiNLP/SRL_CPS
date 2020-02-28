@@ -189,9 +189,12 @@ class SR_Matcher(nn.Module):
         scores = torch.bmm(y.view(self.batch_size, seq_len, 200), query_vectors)
         scores = scores.transpose(1, 2).contiguous()
         # B T2 T1
-        scores = F.softmax(scores, 2)
+        weights = F.softmax(scores, 2)
         # B T2 T1 * B T1 R -> B T2 R
-        output_word = torch.bmm(scores, SRL_scores).view(self.batch_size * seq_len, -1)
+        output_word = torch.bmm(weights, SRL_scores).view(self.batch_size * seq_len, -1)
+        print('+++++++++++++++++++++++++++++++++++++++++++')
+        print(weights[-1][-1])
+        print(output_word[-1])
         return output_word
 
 class Discriminator(nn.Module):
