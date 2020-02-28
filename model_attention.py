@@ -181,6 +181,7 @@ class SR_Matcher(nn.Module):
         base_vectors = self.base_emb2vector(base_embs).view(self.batch_size, seq_len, 200)
         SRL_scores = SRL_scores.view(self.batch_size, seq_len, self.target_vocab_size)
         base_vectors = base_vectors.view(self.batch_size * seq_len, 200)
+        ## B*T1 v
         y = torch.mm(base_vectors, self.matrix)
         # B T2 V -> B V T2
         query_vectors = query_vectors.transpose(1, 2).contiguous()
@@ -719,7 +720,7 @@ class SR_Model(nn.Module):
         SRL_output = self.SR_Labeler(bert_emb, flag_emb, predicates_1D, seq_len, para=False, use_bert=True)
 
         SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
-        SRL_input_scores = SRL_input.detach()
+        SRL_input_scores = F.softmax(SRL_input, 2).detach()
 
 
         output_word = self.SR_Matcher(bert_emb.detach(), bert_emb.detach(), SRL_input_scores,
@@ -729,7 +730,7 @@ class SR_Model(nn.Module):
         #output_word = torch.cat((output_word[:, 0:1], score4Null, output_word[:, 1:]), 1)
 
         teacher = F.softmax(SRL_input.view(self.batch_size * seq_len, -1), dim=1).detach()
-        student = F.log_softmax(output_word, dim=1)
+        student = torch.log(output_word)
         unlabeled_loss_function = nn.KLDivLoss(reduction='none')
         loss_copy = unlabeled_loss_function(student, teacher)
         loss_copy = loss_copy.sum() / (self.batch_size * seq_len)
