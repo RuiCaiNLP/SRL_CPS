@@ -164,37 +164,49 @@ class SR_Matcher(nn.Module):
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
         self.bert_size = 768
         self.base_emb2vector = nn.Sequential(nn.Linear(self.bert_size, 300),
-                                        nn.ReLU(),
+                                        nn.Tanh(),
                                         nn.Linear(300, 200),
-                                        nn.ReLU())
+                                        nn.Tanh())
 
         self.query_emb2vector = nn.Sequential(nn.Linear(self.bert_size, 300),
-                                              nn.ReLU(),
+                                              nn.Tanh(),
                                               nn.Linear(300, 200),
-                                              nn.ReLU())
+                                              nn.Tanh())
+
+        self.probs2vector = nn.Sequential(nn.Linear(self.target_vocab_size, 100),
+                                              nn.Tanh(),
+                                              nn.Linear(100, 50),
+                                              nn.Tanh())
+        self.words_weight = nn.Sequential(nn.Linear(50, 1),
+                                          nn.Sigmoid())
+
+        self.vector2scores = nn.Sequential(nn.Linear(50, 30),
+                                           nn.Tanh(),
+                                           nn.Linear(30, self.target_vocab_size-1))
 
         self.matrix = nn.Parameter(
-            get_torch_variable_from_np(np.zeros((200, 200)).astype("float32")))
+            get_torch_variable_from_np(np.zeros((200, 200*50)).astype("float32")))
 
-    def forward(self, base_embs, query_embs, SRL_scores,  seq_len,  isTrain = False, para=False):
-        query_vectors = self.query_emb2vector(query_embs).view(self.batch_size, seq_len, 200)
-        base_vectors = self.base_emb2vector(base_embs).view(self.batch_size, seq_len, 200)
-        SRL_scores = SRL_scores.view(self.batch_size, seq_len, self.target_vocab_size)
-        base_vectors = base_vectors.view(self.batch_size * seq_len, 200)
-        ## B*T1 v
+    def forward(self, base_embs, query_embs, SRL_probs,  seq_len_base, seq_len_query, isTrain = False, para=False):
+        query_vectors = self.query_emb2vector(query_embs).view(self.batch_size, seq_len_query, 200)
+        base_vectors = self.base_emb2vector(base_embs).view(self.batch_size, seq_len_base, 200)
+        SRL_vectors = self.probs2vector(SRL_probs.view(self.batch_size, seq_len_base, self.target_vocab_size))
+        base_vectors = base_vectors.view(self.batch_size * seq_len_base, 200)
+        ## B*T1 R*v
         y = torch.mm(base_vectors, self.matrix)
         # B T2 V -> B V T2
         query_vectors = query_vectors.transpose(1, 2).contiguous()
-        # B T1 v * B v T2 -> B T1 T2
-        scores = torch.bmm(y.view(self.batch_size, seq_len, 200), query_vectors)
+        # B T1*R v * B v T2 -> B T1*R T2 -> B T2 T1*R
+        scores = torch.bmm(y.view(self.batch_size, seq_len_base*50, 200), query_vectors)
         scores = scores.transpose(1, 2).contiguous()
-        # B T2 T1
-        weights = F.softmax(scores, 2)
-        # B T2 T1 * B T1 R -> B T2 R
-        output_word = torch.bmm(weights, SRL_scores).view(self.batch_size * seq_len, -1)
-        print('+++++++++++++++++++++++++++++++++++++++++++')
-        print(weights[-1][-1])
-        print(output_word[-1])
+        # B T2 T1*R -> B T2 T1
+        weights = self.words_weight(scores.view(self.batch_size, seq_len_query, seq_len_base, 50))
+        weights = weights.view(self.batch_size, seq_len_query, seq_len_base, 1)
+        SRL_vectors = torch.unsqueeze(SRL_vectors, 1).expand((self.batch_size, seq_len_query, seq_len_base, 50))
+        # B T2 T1 1 * B (T2) T1 R -> B T2 T1 R -> B T2 R
+        output_word = SRL_vectors*weights
+        output_word = torch.max(output_word, dim=2)[0]
+        output_word = self.vector2scores(output_word.view(self.batch_size*seq_len_query, 50))
         return output_word
 
 class Discriminator(nn.Module):
@@ -727,13 +739,13 @@ class SR_Model(nn.Module):
 
 
         output_word = self.SR_Matcher(bert_emb.detach(), bert_emb.detach(), SRL_input_probs,
-                                      seq_len, isTrain=isTrain,  para=False)
+                                      seq_len, seq_len, isTrain=isTrain,  para=False)
 
-        #score4Null = torch.zeros_like(output_word[:, 1:2])
-        #output_word = torch.cat((output_word[:, 0:1], score4Null, output_word[:, 1:]), 1)
+        score4Null = torch.zeros_like(output_word[:, 1:2])
+        output_word = torch.cat((output_word[:, 0:1], score4Null, output_word[:, 1:]), 1)
 
         teacher = SRL_input_probs.view(self.batch_size * seq_len, -1).detach()
-        student = torch.log(output_word)
+        student = torch.log_softmax(output_word, dim=1)
         unlabeled_loss_function = nn.KLDivLoss(reduction='none')
         loss_copy = unlabeled_loss_function(student, teacher)
         loss_copy = loss_copy.sum() / (self.batch_size * seq_len)
