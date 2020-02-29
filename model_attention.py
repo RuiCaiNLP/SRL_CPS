@@ -194,7 +194,7 @@ class SR_Matcher(nn.Module):
         # B T2 T1 -> B T2 T1
         weights = F.sigmoid(scores)
         weights = weights.view(self.batch_size, seq_len_query, seq_len_base, 1)\
-            .expand((self.batch_size, seq_len_query, seq_len_base, self.target_vocab_size-1))
+            .expand((self.batch_size, seq_len_query, seq_len_base, 50))
         SRL_vectors = torch.unsqueeze(SRL_vectors, 1).expand((self.batch_size, seq_len_query, seq_len_base, 50))
         # B T2 T1 R * B T2 T1 R -> B T2 T1 R
         output_word = SRL_vectors*weights
