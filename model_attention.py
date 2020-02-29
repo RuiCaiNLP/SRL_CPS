@@ -48,7 +48,7 @@ class SR_Labeler(nn.Module):
                                     bidirectional=True,
                                     bias=True, batch_first=True)
 
-        self.bilstm_bert = nn.LSTM(input_size=768 + self.flag_emb_size,
+        self.bilstm_bert = nn.LSTM(input_size=300 + self.flag_emb_size,
                                    hidden_size=self.bilstm_hidden_size, num_layers=self.bilstm_num_layers,
                                    bidirectional=True,
                                    bias=True, batch_first=True)
@@ -162,7 +162,7 @@ class SR_Matcher(nn.Module):
 
         self.bilstm_num_layers = model_params['bilstm_num_layers']
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
-        self.bert_size = 768
+        self.bert_size = 300
         self.base_emb2vector = nn.Sequential(nn.Linear(self.bert_size, 300),
                                         nn.Tanh())
 
@@ -699,6 +699,7 @@ class SR_Model(nn.Module):
             #l2loss = self.word_trans(batch_input, use_bert)
             consistent_loss = self.parallel_train(batch_input, use_bert)
             return consistent_loss
+        pretrain_batch = get_torch_variable_from_np(batch_input['pretrain'])
         predicates_1D = batch_input['predicates_idx']
         flag_batch = get_torch_variable_from_np(batch_input['flag'])
         flag_emb = self.flag_embedding(flag_batch)
@@ -723,6 +724,12 @@ class SR_Model(nn.Module):
                         bert_emb[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
             bert_emb = bert_emb.detach()
 
+        if lang == "En":
+            pretrain_emb = self.pretrained_embedding(pretrain_batch).detach()
+        else:
+            pretrain_emb = self.fr_pretrained_embedding(pretrain_batch).detach()
+
+        bert_emb = pretrain_emb
         seq_len = flag_emb.shape[1]
 
         SRL_output = self.SR_Labeler(bert_emb, flag_emb, predicates_1D, seq_len, para=False, use_bert=True)
