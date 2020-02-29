@@ -1,5 +1,5 @@
 from __future__ import print_function
-import model_attention
+import model_atten
 import data_utils
 import inter_utils
 import pickle
@@ -335,7 +335,7 @@ if __name__ == '__main__':
         }
 
         # build model
-        srl_model = model_attention.SR_Model(model_params)
+        srl_model = model_atten.SR_Model(model_params)
 
         if USE_CUDA:
             srl_model.cuda()
@@ -381,7 +381,7 @@ if __name__ == '__main__':
 
                 loss_word = criterion_word(out_word, target_batch_variable)
                 if batch_i % 50 == 0:
-                    print("epoch:", epoch, batch_i, loss.item(), loss_word, copy_loss.item())
+                    print("epoch:", epoch, batch_i, loss.item(), loss_word.item())
                 optimizer.zero_grad()
                 (loss + loss_word).backward()
                 optimizer.step()

@@ -294,7 +294,7 @@ class SR_Model(nn.Module):
 
 
 
-    def forward(self, batch_input, lang='En', unlabeled=False):
+    def forward(self, batch_input, lang='En', unlabeled=False,  use_bert=False, isTrain=False):
         if unlabeled:
 
             loss = self.parallel_train(batch_input)
@@ -323,7 +323,7 @@ class SR_Model(nn.Module):
         pred_recur = self.SR_Compressor(pretrain_emb, word_id_emb, seq_len, para=False)
 
         output_word = self.SR_Matcher(pred_recur, SRL_input, pretrain_emb, word_id_emb.detach(), seq_len, para=False)
-        return SRL_output, output_word
+        return SRL_output, output_word, output_word
 
 
 
