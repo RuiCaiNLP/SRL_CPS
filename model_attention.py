@@ -164,46 +164,39 @@ class SR_Matcher(nn.Module):
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
         self.bert_size = 768
         self.base_emb2vector = nn.Sequential(nn.Linear(self.bert_size, 300),
-                                        nn.Tanh(),
-                                        nn.Linear(300, 200),
                                         nn.Tanh())
 
         self.query_emb2vector = nn.Sequential(nn.Linear(self.bert_size, 300),
-                                              nn.Tanh(),
-                                              nn.Linear(300, 200),
                                               nn.Tanh())
 
         self.probs2vector = nn.Sequential(nn.Linear(self.target_vocab_size, 100),
                                               nn.Tanh(),
                                               nn.Linear(100, 50),
                                               nn.Tanh())
-        self.words_weight = nn.Sequential(nn.Linear(50, 1),
-                                          nn.Sigmoid())
 
         self.vector2scores = nn.Sequential(nn.Linear(50, 30),
                                            nn.Tanh(),
                                            nn.Linear(30, self.target_vocab_size-1))
 
         self.matrix = nn.Parameter(
-            get_torch_variable_from_np(np.zeros((200, 200*50)).astype("float32")))
+            get_torch_variable_from_np(np.zeros((300, 300)).astype("float32")))
 
     def forward(self, base_embs, query_embs, SRL_probs,  seq_len_base, seq_len_query, isTrain = False, para=False):
-        query_vectors = self.query_emb2vector(query_embs).view(self.batch_size, seq_len_query, 200)
-        base_vectors = self.base_emb2vector(base_embs).view(self.batch_size, seq_len_base, 200)
+        query_vectors = self.query_emb2vector(query_embs).view(self.batch_size, seq_len_query, 300)
+        base_vectors = self.base_emb2vector(base_embs).view(self.batch_size, seq_len_base, 300)
         SRL_vectors = self.probs2vector(SRL_probs.view(self.batch_size, seq_len_base, self.target_vocab_size))
-        base_vectors = base_vectors.view(self.batch_size * seq_len_base, 200)
-        ## B*T1 R*v
-        y = torch.mm(base_vectors, self.matrix)
-        # B T2 V -> B V T2
-        query_vectors = query_vectors.transpose(1, 2).contiguous()
-        # B T1*R v * B v T2 -> B T1*R T2 -> B T2 T1*R
-        scores = torch.bmm(y.view(self.batch_size, seq_len_base*50, 200), query_vectors)
-        scores = scores.transpose(1, 2).contiguous()
-        # B T2 T1*R -> B T2 T1
-        weights = self.words_weight(scores.view(self.batch_size, seq_len_query, seq_len_base, 50))
-        weights = weights.view(self.batch_size, seq_len_query, seq_len_base, 1)
+        query_vectors = query_vectors.view(self.batch_size * seq_len_base, 300)
+        ## B T2 v
+        y = torch.mm(query_vectors, self.matrix)
+        # B T2 v * B v T1 -> B T2 T1
+        base_vectors = base_vectors.transpose(1,2).contiguous()
+        scores = torch.bmm(y.view(self.batch_size, seq_len_base, 300), base_vectors)
+        # B T2 T1 -> B T2 T1
+        weights = F.sigmoid(scores)
+        weights = weights.view(self.batch_size, seq_len_query, seq_len_base, 1)\
+            .expand((self.batch_size, seq_len_query, seq_len_base, self.target_vocab_size-1))
         SRL_vectors = torch.unsqueeze(SRL_vectors, 1).expand((self.batch_size, seq_len_query, seq_len_base, 50))
-        # B T2 T1 1 * B (T2) T1 R -> B T2 T1 R -> B T2 R
+        # B T2 T1 R * B T2 T1 R -> B T2 T1 R
         output_word = SRL_vectors*weights
         output_word = torch.max(output_word, dim=2)[0]
         output_word = self.vector2scores(output_word.view(self.batch_size*seq_len_query, 50))
