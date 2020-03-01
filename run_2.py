@@ -1,5 +1,5 @@
 from __future__ import print_function
-import model_atten
+import model_attention
 import data_utils
 import inter_utils
 import pickle
@@ -335,7 +335,7 @@ if __name__ == '__main__':
         }
 
         # build model
-        srl_model = model_atten.SR_Model(model_params)
+        srl_model = model_attention.SR_Model(model_params)
 
         if USE_CUDA:
             srl_model.cuda()

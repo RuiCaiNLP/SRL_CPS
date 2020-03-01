@@ -48,7 +48,7 @@ class SR_Labeler(nn.Module):
                                     bidirectional=True,
                                     bias=True, batch_first=True)
 
-        self.bilstm_bert = nn.LSTM(input_size=300 + self.flag_emb_size,
+        self.bilstm_bert = nn.LSTM(input_size=768 + self.flag_emb_size,
                                    hidden_size=self.bilstm_hidden_size, num_layers=self.bilstm_num_layers,
                                    bidirectional=True,
                                    bias=True, batch_first=True)
@@ -162,7 +162,7 @@ class SR_Matcher(nn.Module):
 
         self.bilstm_num_layers = model_params['bilstm_num_layers']
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
-        self.bert_size = 300
+        self.bert_size = 768
         self.base_emb2vector = nn.Sequential(nn.Linear(self.bert_size, 300),
                                         nn.Tanh())
 
@@ -176,7 +176,7 @@ class SR_Matcher(nn.Module):
 
         self.vector2scores = nn.Sequential(nn.Linear(50, 30),
                                            nn.Tanh(),
-                                           nn.Linear(30, self.target_vocab_size-1))
+                                           nn.Linear(30, self.target_vocab_size))
 
         self.matrix = nn.Parameter(
             get_torch_variable_from_np(np.zeros((300, 300)).astype("float32")))
@@ -716,6 +716,7 @@ class SR_Model(nn.Module):
 
             bert_emb = bert_emb[torch.arange(bert_emb.size(0)).unsqueeze(-1), bert_out_positions].detach()
 
+            """
             for i in range(len(bert_emb)):
                 if i >= len(actual_lens):
                     break
@@ -723,13 +724,8 @@ class SR_Model(nn.Module):
                     if j >= actual_lens[i]:
                         bert_emb[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
             bert_emb = bert_emb.detach()
+            """
 
-        if lang == "En":
-            pretrain_emb = self.pretrained_embedding(pretrain_batch).detach()
-        else:
-            pretrain_emb = self.fr_pretrained_embedding(pretrain_batch).detach()
-
-        bert_emb = pretrain_emb
         seq_len = flag_emb.shape[1]
 
         SRL_output = self.SR_Labeler(bert_emb, flag_emb, predicates_1D, seq_len, para=False, use_bert=True)
@@ -741,8 +737,8 @@ class SR_Model(nn.Module):
         output_word = self.SR_Matcher(bert_emb.detach(), bert_emb.detach(), SRL_input_probs,
                                       seq_len, seq_len, isTrain=isTrain,  para=False)
 
-        score4Null = torch.zeros_like(output_word[:, 1:2])
-        output_word = torch.cat((output_word[:, 0:1], score4Null, output_word[:, 1:]), 1)
+        #score4Null = torch.zeros_like(output_word[:, 1:2])
+        #output_word = torch.cat((output_word[:, 0:1], score4Null, output_word[:, 1:]), 1)
 
         teacher = SRL_input_probs.view(self.batch_size * seq_len, -1).detach()
         student = torch.log_softmax(output_word, dim=1)
