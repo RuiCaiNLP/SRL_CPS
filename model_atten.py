@@ -337,10 +337,12 @@ class SR_Model(nn.Module):
 
 
         for i in range(len(bert_emb)):
-            if i >= len(actual_lens):
-                break
+            #if i >= len(actual_lens):
+            #    break
+            print(len(bert_emb[i]))
             for j in range(len(bert_emb[i])):
                 if j >= actual_lens[i]:
+                    print(j)
                     bert_emb[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32")+0.1)
         bert_emb = bert_emb.detach()
 
