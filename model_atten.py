@@ -93,7 +93,7 @@ class SR_Compressor(nn.Module):
         self.bilstm_num_layers = model_params['bilstm_num_layers']
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
 
-        self.emb2vector = nn.Sequential(nn.Linear(self.pretrain_emb_size+self.flag_emb_size, 300),
+        self.emb2vector = nn.Sequential(nn.Linear(self.pretrain_emb_size+0*self.flag_emb_size, 300),
                                            nn.ReLU(),
                                            nn.Linear(300, 200),
                                            nn.ReLU())
@@ -102,7 +102,8 @@ class SR_Compressor(nn.Module):
 
     def forward(self, pretrained_emb, word_id_emb, seq_len, para=False):
         #SRL_input = SRL_input.view(self.batch_size, seq_len, -1)
-        compress_input = torch.cat((pretrained_emb, word_id_emb), 2)
+        #compress_input = torch.cat((pretrained_emb, word_id_emb), 2)
+        compress_input = pretrained_emb
         if not para:
             compress_input = self.dropout_word(compress_input)
         # B T V
@@ -125,7 +126,7 @@ class SR_Matcher(nn.Module):
 
         self.bilstm_num_layers = model_params['bilstm_num_layers']
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
-        self.emb2vector = nn.Sequential(nn.Linear(self.pretrain_emb_size + self.flag_emb_size, 300),
+        self.emb2vector = nn.Sequential(nn.Linear(self.pretrain_emb_size + 0*self.flag_emb_size, 300),
                                         nn.ReLU(),
                                         nn.Linear(300, 200),
                                         nn.ReLU())
@@ -138,6 +139,7 @@ class SR_Matcher(nn.Module):
             query_word = self.dropout_word(torch.cat((pretrained_emb, word_id_emb), 2))
         else:
             query_word = torch.cat((pretrained_emb, word_id_emb), 2)
+        query_word = pretrained_emb
         query_vector = self.emb2vector(query_word).view(self.batch_size, seq_len, 200)
         if para:
             query_vector = query_vector.detach()
