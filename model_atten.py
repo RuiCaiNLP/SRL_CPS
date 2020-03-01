@@ -4,6 +4,7 @@ import torch
 from torch import nn
 import sys
 from torch.autograd import Variable
+from transformers import *
 import torch.nn.functional as F
 
 from utils import USE_CUDA
@@ -43,7 +44,7 @@ class SR_Labeler(nn.Module):
                      requires_grad=True),
             Variable(torch.randn(2 * self.bilstm_num_layers, self.batch_size, self.bilstm_hidden_size),
                      requires_grad=True))
-        self.bilstm_layer = nn.LSTM(input_size=300 + 1 * self.flag_emb_size,
+        self.bilstm_layer = nn.LSTM(input_size=768 + 1 * self.flag_emb_size,
                                     hidden_size=self.bilstm_hidden_size, num_layers=self.bilstm_num_layers,
                                     bidirectional=True,
                                     bias=True, batch_first=True)
@@ -88,7 +89,7 @@ class SR_Compressor(nn.Module):
         self.target_vocab_size = model_params['target_vocab_size']
         self.use_flag_embedding = model_params['use_flag_embedding']
         self.flag_emb_size = model_params['flag_embedding_size']
-        self.pretrain_emb_size = model_params['pretrain_emb_size']
+        self.pretrain_emb_size = 768#model_params['pretrain_emb_size']
 
         self.bilstm_num_layers = model_params['bilstm_num_layers']
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
@@ -122,7 +123,7 @@ class SR_Matcher(nn.Module):
         self.target_vocab_size = model_params['target_vocab_size']
         self.use_flag_embedding = model_params['use_flag_embedding']
         self.flag_emb_size = model_params['flag_embedding_size']
-        self.pretrain_emb_size = model_params['pretrain_emb_size']
+        self.pretrain_emb_size = 768#model_params['pretrain_emb_size']
 
         self.bilstm_num_layers = model_params['bilstm_num_layers']
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
@@ -229,6 +230,12 @@ class SR_Model(nn.Module):
         self.SR_Compressor = SR_Compressor(model_params)
         self.SR_Matcher = SR_Matcher(model_params)
 
+        self.model = BertModel.from_pretrained('bert-base-multilingual-cased')
+        for name, param in self.model.named_parameters():
+            param.requires_grad = False
+        self.model.to(device)
+        self.model.eval()
+
 
 
     def parallel_train(self, batch_input):
@@ -311,12 +318,33 @@ class SR_Model(nn.Module):
         word_id = get_torch_variable_from_np(batch_input['word_times'])
         word_id_emb = self.id_embedding(word_id)
         flag_emb = self.flag_embedding(flag_batch)
+        actual_lens = batch_input['seq_len']
 
         if lang == "En":
             pretrain_emb = self.pretrained_embedding(pretrain_batch).detach()
         else:
             pretrain_emb = self.fr_pretrained_embedding(pretrain_batch).detach()
 
+        bert_input_ids = get_torch_variable_from_np(batch_input['bert_input_ids'])
+        bert_input_mask = get_torch_variable_from_np(batch_input['bert_input_mask'])
+        bert_out_positions = get_torch_variable_from_np(batch_input['bert_out_positions'])
+
+        bert_emb = self.model(bert_input_ids, attention_mask=bert_input_mask)
+        bert_emb = bert_emb[0]
+        bert_emb = bert_emb[:, 1:-1, :].contiguous().detach()
+
+        bert_emb = bert_emb[torch.arange(bert_emb.size(0)).unsqueeze(-1), bert_out_positions].detach()
+
+        for i in range(len(bert_emb)):
+            if i >= len(actual_lens):
+                break
+            for j in range(len(bert_emb[i])):
+                if j >= actual_lens[i]:
+                    bert_emb[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
+        bert_emb = bert_emb.detach()
+
+
+        pretrain_emb = bert_emb
         seq_len = flag_emb.shape[1]
         SRL_output = self.SR_Labeler(pretrain_emb, flag_emb, predicates_1D, seq_len, para=False)
 
