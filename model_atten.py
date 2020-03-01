@@ -343,7 +343,7 @@ class SR_Model(nn.Module):
                 if j >= actual_lens[i]:
                     bert_emb[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32")+0.1)
         bert_emb = bert_emb.detach()
-        print(actual_lens)
+
 
         pretrain_emb = bert_emb
         seq_len = flag_emb.shape[1]
