@@ -381,9 +381,9 @@ if __name__ == '__main__':
 
                 loss_word = criterion_word(out_word, target_batch_variable)
                 if batch_i % 50 == 0:
-                    print("epoch:", epoch, batch_i, loss.item(), loss_word.item())
+                    print("epoch:", epoch, batch_i, loss.item(), loss_word.item(), copy_loss)
                 optimizer.zero_grad()
-                (loss + loss_word).backward()
+                (loss + copy_loss).backward()
                 optimizer.step()
                 sys.stdout.flush()
 

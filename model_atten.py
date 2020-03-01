@@ -93,7 +93,7 @@ class SR_Compressor(nn.Module):
         self.bilstm_num_layers = model_params['bilstm_num_layers']
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
 
-        self.emb2vector = nn.Sequential(nn.Linear(self.pretrain_emb_size+0*self.flag_emb_size, 300),
+        self.emb2vector = nn.Sequential(nn.Linear(self.pretrain_emb_size+self.flag_emb_size, 300),
                                            nn.ReLU(),
                                            nn.Linear(300, 200),
                                            nn.ReLU())
@@ -102,7 +102,7 @@ class SR_Compressor(nn.Module):
 
     def forward(self, pretrained_emb, word_id_emb, seq_len, para=False):
         #SRL_input = SRL_input.view(self.batch_size, seq_len, -1)
-        compress_input = pretrained_emb#torch.cat((pretrained_emb, word_id_emb), 2)
+        compress_input = torch.cat((pretrained_emb, word_id_emb), 2)
         if not para:
             compress_input = self.dropout_word(compress_input)
         # B T V
@@ -125,7 +125,7 @@ class SR_Matcher(nn.Module):
 
         self.bilstm_num_layers = model_params['bilstm_num_layers']
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
-        self.emb2vector = nn.Sequential(nn.Linear(self.pretrain_emb_size + 0*self.flag_emb_size, 300),
+        self.emb2vector = nn.Sequential(nn.Linear(self.pretrain_emb_size + self.flag_emb_size, 300),
                                         nn.ReLU(),
                                         nn.Linear(300, 200),
                                         nn.ReLU())
@@ -138,7 +138,6 @@ class SR_Matcher(nn.Module):
             query_word = self.dropout_word(torch.cat((pretrained_emb, word_id_emb), 2))
         else:
             query_word = torch.cat((pretrained_emb, word_id_emb), 2)
-        query_word = pretrained_emb
         query_vector = self.emb2vector(query_word).view(self.batch_size, seq_len, 200)
         if para:
             query_vector = query_vector.detach()
@@ -295,7 +294,7 @@ class SR_Model(nn.Module):
 
 
 
-    def forward(self, batch_input, lang='En', unlabeled=False,  use_bert=False, isTrain=False):
+    def forward(self, batch_input, lang='En', unlabeled=False, use_bert=False, isTrain=True):
         if unlabeled:
 
             loss = self.parallel_train(batch_input)
@@ -324,7 +323,15 @@ class SR_Model(nn.Module):
         pred_recur = self.SR_Compressor(pretrain_emb, word_id_emb, seq_len, para=False)
 
         output_word = self.SR_Matcher(pred_recur, SRL_input, pretrain_emb, word_id_emb.detach(), seq_len, para=False)
-        return SRL_output, output_word, output_word
+
+
+        teacher = F.softmax(SRL_input.view(self.batch_size * seq_len, -1), 1).detach()
+        student = torch.log_softmax(output_word, dim=1)
+        unlabeled_loss_function = nn.KLDivLoss(reduction='none')
+        loss_copy = unlabeled_loss_function(student, teacher)
+        loss_copy = loss_copy.sum() / (self.batch_size * seq_len)
+
+        return SRL_output, output_word, loss_copy
 
 
 
