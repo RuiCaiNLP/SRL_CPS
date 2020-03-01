@@ -335,8 +335,6 @@ class SR_Model(nn.Module):
 
         bert_emb = bert_emb[torch.arange(bert_emb.size(0)).unsqueeze(-1), bert_out_positions].detach()
 
-
-        print(actual_lens)
         for i in range(len(bert_emb)):
             if i >= len(actual_lens):
                 break
