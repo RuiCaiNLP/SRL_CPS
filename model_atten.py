@@ -134,6 +134,12 @@ class SR_Matcher(nn.Module):
         self.matrix = nn.Parameter(
                     get_torch_variable_from_np(np.zeros((200, 200)).astype("float32")))
 
+        self.prob2prob = nn.Sequential(nn.Linear(self.target_vocab_size, 30),
+                                        nn.ReLU(),
+                                        nn.Linear(30, self.target_vocab_size))
+
+
+
 
     def forward(self, memory_vectors,  SRL_probs, pretrained_emb, word_id_emb, seq_len, para=False):
         if not para:
@@ -162,6 +168,7 @@ class SR_Matcher(nn.Module):
         scores = F.softmax(scores, 2)
         # B T2 T1 * B T1 R -> B T2 R
         output_word = torch.bmm(scores, SRL_probs).view(self.batch_size*seq_len, -1)
+        output_word = self.prob2prob(output_word)
         return output_word
 
 
@@ -358,8 +365,8 @@ class SR_Model(nn.Module):
 
 
         teacher = SRL_input.view(self.batch_size * seq_len, -1).detach()
-        eps = 1e-7
-        student = torch.log(output_word+eps)
+        #eps = 1e-7
+        student = torch.log_softmax(output_word, 1)
         unlabeled_loss_function = nn.KLDivLoss(reduction='none')
         loss_copy = unlabeled_loss_function(student, teacher)
         loss_copy = loss_copy.sum() / (self.batch_size * seq_len)
