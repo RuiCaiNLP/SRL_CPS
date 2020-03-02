@@ -134,9 +134,9 @@ class SR_Matcher(nn.Module):
         self.matrix = nn.Parameter(
                     get_torch_variable_from_np(np.zeros((200, 200)).astype("float32")))
 
-        self.prob2prob = nn.Sequential(nn.Linear(self.target_vocab_size, 30),
-                                        nn.ReLU(),
-                                        nn.Linear(30, self.target_vocab_size))
+        self.prob2prob = nn.Linear(self.target_vocab_size, self.target_vocab_size)#nn.Sequential(nn.Linear(self.target_vocab_size, 30),
+                         #               nn.ReLU(),
+                         #               nn.Linear(30, self.target_vocab_size))
 
 
 
