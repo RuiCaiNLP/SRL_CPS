@@ -351,14 +351,15 @@ class SR_Model(nn.Module):
         SRL_output = self.SR_Labeler(pretrain_emb, flag_emb, predicates_1D, seq_len, para=False)
 
         SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
-        SRL_input = SRL_input.detach()
+        SRL_input = F.softmax(SRL_input, 2).detach()
         pred_recur = self.SR_Compressor(pretrain_emb, word_id_emb, seq_len, para=False)
 
         output_word = self.SR_Matcher(pred_recur, SRL_input, pretrain_emb, word_id_emb.detach(), seq_len, para=False)
 
 
-        teacher = F.softmax(SRL_input.view(self.batch_size * seq_len, -1), 1).detach()
-        student = torch.log_softmax(output_word, dim=1)
+        teacher = SRL_input.view(self.batch_size * seq_len, -1).detach()
+        eps = 1e-7
+        student = torch.log(output_word+eps)
         unlabeled_loss_function = nn.KLDivLoss(reduction='none')
         loss_copy = unlabeled_loss_function(student, teacher)
         loss_copy = loss_copy.sum() / (self.batch_size * seq_len)
