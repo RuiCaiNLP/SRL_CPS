@@ -139,13 +139,16 @@ class SR_Matcher(nn.Module):
 
         query_word = pretrained_emb
         query_vector = self.emb2vector(query_word).view(self.batch_size, seq_len, 200)
-
+        if para:
+            query_vector = query_vector.detach()
 
         seq_len_origin = memory_vectors.shape[1]
         SRL_probs = SRL_probs.view(self.batch_size, seq_len_origin, self.target_vocab_size)
         memory_vectors = memory_vectors.view(self.batch_size*seq_len_origin, 200)
-        y = torch.mm(memory_vectors, self.matrix)
-
+        if not para:
+            y = torch.mm(memory_vectors, self.matrix)
+        else:
+            y = torch.mm(memory_vectors, self.matrix.detach())
 
         # B T2 V -> B V T2
         query_vector = query_vector.transpose(1, 2).contiguous()
