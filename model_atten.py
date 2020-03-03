@@ -360,6 +360,7 @@ class SR_Model(nn.Module):
         teacher = SRL_input.view(self.batch_size * seq_len, -1).detach()
         eps = 1e-7
         student = torch.log(output_word+eps)
+
         unlabeled_loss_function = nn.KLDivLoss(reduction='none')
         loss_copy = unlabeled_loss_function(student, teacher)
         loss_copy = loss_copy.sum() / (self.batch_size * seq_len)
