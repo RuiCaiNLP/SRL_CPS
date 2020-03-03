@@ -116,6 +116,7 @@ class SR_Matcher(nn.Module):
     def __init__(self, model_params):
         super(SR_Matcher, self).__init__()
         self.mlp_size = 300
+        self.dropout_word = nn.Dropout(p=0.3)
         self.dropout_mlp = model_params['dropout_mlp']
         self.batch_size = model_params['batch_size']
 
@@ -146,6 +147,7 @@ class SR_Matcher(nn.Module):
 
     def forward(self, origin_emb,  SRL_probs, query_emb, para=False):
 
+        origin_emb = self.dropout_word(origin_emb)
         query_vector = self.query2vector(query_emb).view(self.batch_size, -1, 200)
         origin_vector = self.origin2vector(origin_emb).view(self.batch_size, -1, 200)
 
