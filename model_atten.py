@@ -136,7 +136,10 @@ class SR_Matcher(nn.Module):
 
 
     def forward(self, memory_vectors,  SRL_probs, pretrained_emb, word_id_emb, seq_len, para=False):
-
+        if not para:
+            query_word = self.dropout_word(torch.cat((pretrained_emb, word_id_emb), 2))
+        else:
+            query_word = torch.cat((pretrained_emb, word_id_emb), 2)
         query_word = pretrained_emb
         query_vector = self.emb2vector(query_word).view(self.batch_size, seq_len, 200)
         if para:
