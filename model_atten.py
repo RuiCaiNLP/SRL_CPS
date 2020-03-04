@@ -104,8 +104,8 @@ class SR_Compressor(nn.Module):
         #SRL_input = SRL_input.view(self.batch_size, seq_len, -1)
         #compress_input = torch.cat((pretrained_emb, word_id_emb), 2)
         compress_input = pretrained_emb
-        if not para:
-            compress_input = self.dropout_word(compress_input)
+        #if not para:
+        #    compress_input = self.dropout_word(compress_input)
         # B T V
         compressor_vector = self.emb2vector(compress_input)
         return compressor_vector
@@ -130,20 +130,13 @@ class SR_Matcher(nn.Module):
                                         nn.ReLU(),
                                         nn.Linear(300, 200),
                                         nn.ReLU())
-
-        self.emb2vector_1 = nn.Sequential(nn.Linear(self.pretrain_emb_size + 0 * self.flag_emb_size, 300),
-                                        nn.ReLU(),
-                                        nn.Linear(300, 200),
-                                        nn.ReLU())
-
         self.matrix = nn.Parameter(
                     get_torch_variable_from_np(np.zeros((200, 200)).astype("float32")))
 
 
-    def forward(self, pretrained_emb_1,  SRL_probs, pretrained_emb, word_id_emb, seq_len, para=False):
+    def forward(self, memory_vectors,  SRL_probs, pretrained_emb, word_id_emb, seq_len, para=False):
 
         query_word = pretrained_emb
-        memory_vectors = self.emb2vector_1(pretrained_emb_1).view(self.batch_size, seq_len, 200)
         query_vector = self.emb2vector(query_word).view(self.batch_size, seq_len, 200)
         if para:
             query_vector = query_vector.detach()
@@ -356,9 +349,9 @@ class SR_Model(nn.Module):
 
         SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
         SRL_input = F.softmax(SRL_input, 2).detach()
-        #pred_recur = self.SR_Compressor(pretrain_emb, word_id_emb, seq_len, para=False)
+        pred_recur = self.SR_Compressor(pretrain_emb, word_id_emb, seq_len, para=False)
 
-        output_word = self.SR_Matcher(pretrain_emb, SRL_input, pretrain_emb, word_id_emb.detach(), seq_len, para=False)
+        output_word = self.SR_Matcher(pred_recur, SRL_input, pretrain_emb, word_id_emb.detach(), seq_len, para=False)
 
 
         teacher = SRL_input.view(self.batch_size * seq_len, -1).detach()
