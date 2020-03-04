@@ -104,8 +104,8 @@ class SR_Compressor(nn.Module):
         #SRL_input = SRL_input.view(self.batch_size, seq_len, -1)
         #compress_input = torch.cat((pretrained_emb, word_id_emb), 2)
         compress_input = pretrained_emb
-        #if not para:
-        #    compress_input = self.dropout_word(compress_input)
+        if not para:
+            compress_input = self.dropout_word(compress_input)
         # B T V
         compressor_vector = self.emb2vector(compress_input)
         return compressor_vector
