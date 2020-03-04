@@ -147,10 +147,10 @@ class SR_Matcher(nn.Module):
         seq_len_origin = memory_vectors.shape[1]
         SRL_probs = SRL_probs.view(self.batch_size, seq_len_origin, self.target_vocab_size)
         memory_vectors = memory_vectors.view(self.batch_size*seq_len_origin, 200)
-        if not para:
-            y = torch.mm(memory_vectors, self.matrix)
-        else:
-            y = torch.mm(memory_vectors, self.matrix.detach())
+        #if not para:
+        y = torch.mm(memory_vectors, self.matrix)
+        #else:
+        #    y = torch.mm(memory_vectors, self.matrix.detach())
 
         # B T2 V -> B V T2
         query_vector = query_vector.transpose(1, 2).contiguous()
