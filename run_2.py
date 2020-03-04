@@ -21,11 +21,6 @@ from data_utils import output_predict
 from data_utils import *
 import sys
 
-#def log(*args, **kwargs):
-    #print(*args,file=sys.stderr, **kwargs)
-#    print(*args,  **kwargs)
-
-
 def seed_everything(seed, cuda=False):
     # Set the random seed manually for reproducibility.
     np.random.seed(seed)

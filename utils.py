@@ -5,7 +5,7 @@ from torch.autograd import Variable
 #from tree import Tree
 from data_utils import _PAD_,_UNK_,_ROOT_,_NUM_
 
-USE_CUDA = False #torch.cuda.is_available() and True
+USE_CUDA = torch.cuda.is_available() and True
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 def get_torch_variable_from_np(v):
