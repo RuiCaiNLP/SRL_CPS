@@ -52,9 +52,8 @@ class SR_Labeler(nn.Module):
 
         self.mlp_size = 300
         self.rel_W = nn.Parameter(
-            torch.from_numpy(
-                np.zeros((self.mlp_size + 1, self.target_vocab_size * (self.mlp_size + 1))).astype("float32")).to(
-                device))
+            get_torch_variable_from_np(
+                np.zeros((self.mlp_size + 1, self.target_vocab_size * (self.mlp_size + 1))).astype("float32")))
         self.mlp_arg = nn.Sequential(nn.Linear(2 * self.bilstm_hidden_size, self.mlp_size), nn.ReLU())
         self.mlp_pred = nn.Sequential(nn.Linear(2 * self.bilstm_hidden_size, self.mlp_size), nn.ReLU())
 
@@ -233,7 +232,8 @@ class SR_Model(nn.Module):
         self.model = BertModel.from_pretrained('bert-base-multilingual-cased')
         for name, param in self.model.named_parameters():
             param.requires_grad = False
-        self.model.to(device)
+        if USE_CUDA:
+            self.model.cuda()
         self.model.eval()
 
 
