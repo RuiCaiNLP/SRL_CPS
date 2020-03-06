@@ -93,10 +93,8 @@ class SR_Compressor(nn.Module):
         self.bilstm_num_layers = model_params['bilstm_num_layers']
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
 
-        self.emb2vector = nn.Sequential(nn.Linear(self.pretrain_emb_size+0*self.flag_emb_size, 300),
-                                           nn.ReLU(),
-                                           nn.Linear(300, 200),
-                                           nn.ReLU())
+        self.emb2vector = nn.Sequential(nn.Linear(self.pretrain_emb_size+0*self.flag_emb_size, 200),
+                                           nn.Tanh())
 
 
 
@@ -126,12 +124,17 @@ class SR_Matcher(nn.Module):
 
         self.bilstm_num_layers = model_params['bilstm_num_layers']
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
-        self.emb2vector = nn.Sequential(nn.Linear(self.pretrain_emb_size + 0*self.flag_emb_size, 300),
-                                        nn.ReLU(),
-                                        nn.Linear(300, 200),
-                                        nn.ReLU())
+        self.emb2vector = nn.Sequential(nn.Linear(self.pretrain_emb_size + 0*self.flag_emb_size, 200),
+                                        nn.Tanh())
         self.matrix = nn.Parameter(
                     get_torch_variable_from_np(np.zeros((200, 200)).astype("float32")))
+
+        self.probs2vector = nn.Sequential(nn.Linear(self.target_vocab_size, self.target_vocab_size),
+                                        nn.Tanh())
+
+        self.vector2probs = nn.Sequential(nn.Linear(self.target_vocab_size, self.target_vocab_size),
+                                          nn.Tanh(),
+                                          nn.Linear(self.target_vocab_size, self.target_vocab_size-1))
 
 
     def forward(self, memory_vectors,  SRL_probs, pretrained_emb, word_id_emb, seq_len, para=False):
@@ -142,7 +145,8 @@ class SR_Matcher(nn.Module):
             query_vector = query_vector.detach()
 
         seq_len_origin = memory_vectors.shape[1]
-        SRL_probs = SRL_probs.view(self.batch_size, seq_len_origin, self.target_vocab_size)
+        SRL_vecs = SRL_probs.view(self.batch_size, seq_len_origin, self.target_vocab_size)
+
         memory_vectors = memory_vectors.view(self.batch_size*seq_len_origin, 200)
         #if not para:
         y = torch.mm(memory_vectors, self.matrix)
@@ -157,7 +161,7 @@ class SR_Matcher(nn.Module):
         # B T2 T1
         scores = F.softmax(scores, 2)
         # B T2 T1 * B T1 R -> B T2 R
-        output_word = torch.bmm(scores, SRL_probs).view(self.batch_size*seq_len, -1)
+        output_word = self.vector2probs(torch.bmm(scores, SRL_vecs).view(self.batch_size*seq_len, -1))
         return output_word
 
 
@@ -353,10 +357,13 @@ class SR_Model(nn.Module):
 
         output_word = self.SR_Matcher(pred_recur, SRL_input, pretrain_emb, word_id_emb.detach(), seq_len, para=False)
 
+        score4Null = torch.zeros_like(output_word[:, 1:2])
+        output_word = torch.cat((output_word[:, 0:1], score4Null, output_word[:, 1:]), 1)
+
 
         teacher = SRL_input.view(self.batch_size * seq_len, -1).detach()
         eps = 1e-7
-        student = torch.log(output_word+eps)
+        student = torch.log_softmax(output_word, 1)
 
         unlabeled_loss_function = nn.KLDivLoss(reduction='none')
         loss_copy = unlabeled_loss_function(student, teacher)
