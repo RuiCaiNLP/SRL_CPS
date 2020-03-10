@@ -122,7 +122,7 @@ class SR_Compressor(nn.Module):
                                          bidirectional=True,
                                          bias=True, batch_first=True)
 
-        self.hidden2weights = nn.Sequential(nn.Linear(self.target_vocab_size*2, self.target_vocab_size),
+        self.hidden2weights = nn.Sequential(nn.Linear(self.target_vocab_size*2, self.target_vocab_size-1),
                                             nn.Sigmoid())
 
         self.compress_emb = nn.Sequential(nn.Linear(768, 256),
@@ -148,8 +148,8 @@ class SR_Compressor(nn.Module):
         compressed_emb = self.compress_emb(word_emb)
 
         #-> B T R H
-        weights_word = weights_word.view(self.batch_size, seq_len, self.target_vocab_size, 1)
-        compressed_emb = compressed_emb.unsqueeze(2).expand(self.batch_size, seq_len, self.target_vocab_size, 256)
+        weights_word = weights_word.view(self.batch_size, seq_len, self.target_vocab_size-1, 1)
+        compressed_emb = compressed_emb.unsqueeze(2).expand(self.batch_size, seq_len, self.target_vocab_size-1, 256)
 
         mixed_emb = weights_word*compressed_emb
 
@@ -186,6 +186,7 @@ class SR_Matcher(nn.Module):
         y = torch.mm(query_emb, self.matrix)
         role_embs = role_embs.transpose(1, 2).contiguous()
         scores = torch.bmm(y.view(self.batch_size, seq_len, 256), role_embs)
+        scores = scores.view(self.batch_size * seq_len, -1)
         return scores
 
 class Discriminator(nn.Module):
@@ -379,7 +380,7 @@ class SR_Model(nn.Module):
         seq_len = flag_emb.shape[1]
         SRL_output = self.SR_Labeler(bert_emb_en, flag_emb.detach(), predicates_1D, seq_len, para=True, use_bert=True)
 
-        CopyLoss_en = self.copy_loss(SRL_output, bert_emb_en, flag_emb.detach(), seq_len)
+        #CopyLoss_en = self.copy_loss(SRL_output, bert_emb_en, flag_emb.detach(), seq_len)
 
         SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
         SRL_input = F.softmax(SRL_input, 2)
@@ -744,9 +745,9 @@ class SR_Model(nn.Module):
                                           seq_len, copy=False,
                                           para=False, use_bert=True)
 
-        output_word = output_word.view(self.batch_size*seq_len, -1)
-        #score4Null = torch.zeros_like(output_word[:, 1:2])
-        #output_word = torch.cat((output_word[:, 0:1], score4Null, output_word[:, 1:]), 1)
+
+        score4Null = torch.zeros_like(output_word[:, 1:2])
+        output_word = torch.cat((output_word[:, 0:1], score4Null, output_word[:, 1:]), 1)
 
         teacher = F.softmax(SRL_input.view(self.batch_size * seq_len, -1), dim=1).detach()
         student = F.log_softmax(output_word, dim=1)
