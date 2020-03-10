@@ -765,7 +765,7 @@ class SR_Model(nn.Module):
         recover_loss = self.learn_loss(SRL_input, output_word, seq_len)
 
 
-        return SRL_output, recover_loss
+        return SRL_output, output_word, recover_loss
 
 
 

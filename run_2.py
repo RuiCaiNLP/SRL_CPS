@@ -371,7 +371,7 @@ if __name__ == '__main__':
                 flat_argument = train_input_data['flat_argument']
                 target_batch_variable = get_torch_variable_from_np(flat_argument)
 
-                out, learn_loss = srl_model(train_input_data, lang='En', use_bert=use_bert, isTrain=True)
+                out, output_word, learn_loss = srl_model(train_input_data, lang='En', use_bert=use_bert, isTrain=True)
                 #_,  prediction_batch_variable = torch.max(out, 1)
                 loss = criterion(out, target_batch_variable)
                 if batch_i % 50 == 0:
