@@ -328,6 +328,14 @@ class SR_Model(nn.Module):
         loss = loss.sum() / (self.batch_size * seq_len)
         return loss
 
+    def learn_loss(self, teacher_probs, student_scores, seq_len):
+        criterion = nn.CrossEntropyLoss()
+        teacher_probs = teacher_probs.view(self.batch_size*seq_len, -1)
+        _, teacher_preds = torch.max(teacher_probs, 1)
+        student_scores = student_scores.view(self.batch_size*seq_len, -1)
+        loss = criterion(student_scores, teacher_preds)
+        return loss
+
     def parallel_train_(self, batch_input, use_bert, isTrain=True):
         unlabeled_data_en, unlabeled_data_fr = batch_input
 
@@ -750,18 +758,14 @@ class SR_Model(nn.Module):
             output_word = self.SR_Matcher(role_embs, bert_emb.detach(), flag_emb.detach(), word_id_emb.detach(),
                                           seq_len, copy=False,
                                           para=False, use_bert=True)
-
-
         score4Null = torch.zeros_like(output_word[:, 1:2])
         output_word = torch.cat((output_word[:, 0:1], score4Null, output_word[:, 1:]), 1)
 
-        teacher = F.softmax(SRL_input.view(self.batch_size * seq_len, -1), dim=1).detach()
-        student = F.log_softmax(output_word, dim=1)
-        unlabeled_loss_function = nn.KLDivLoss(reduction='none')
-        loss_copy = unlabeled_loss_function(student, teacher)
-        loss_copy = loss_copy.sum() / (self.batch_size * seq_len)
 
-        return SRL_output, output_word, loss_copy
+        recover_loss = self.learn_loss(SRL_input, output_word, seq_len)
+
+
+        return SRL_output, recover_loss
 
 
 
