@@ -400,10 +400,9 @@ if __name__ == '__main__':
                                                                    lang="Fr",use_bert=True, para=True)
                     unlabeled_data_en = next(unlabeled_Generator_En)
                     unlabeled_data_fr = next(unlabeled_Generator_Fr)
-                if epoch > 1:
+                if epoch > -1:
                     for param in srl_model.SR_Compressor.parameters():
                         param.requires_grad = False
-                #loss, loss_2, copy_loss, copy_loss_fr =
 
                     loss, loss_2 =  srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True,
                                                         self_constrain=False, use_bert=use_bert)

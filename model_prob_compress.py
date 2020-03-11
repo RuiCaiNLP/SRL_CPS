@@ -449,28 +449,13 @@ class SR_Model(nn.Module):
         output_word_fr_fr = torch.cat((output_word_fr_fr[:, 0:1], score4Null, output_word_fr_fr[:, 1:]), 1)
 
 
+        recover_loss_onEn = self.learn_loss(output_word_en_en, output_word_fr_en, seq_len)
+        recover_loss_onFr = self.learn_loss(output_word_en_fr, output_word_fr_fr, seq_len_fr)
 
 
 
-        unlabeled_loss_function = nn.KLDivLoss(reduction='none')
 
-        # output_word_en_en = F.softmax(output_word_en_en, dim=1).detach()
-        # output_word_fr_en = F.log_softmax(output_word_fr_en, dim=1)
-        # loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en)
-        output_word_en_en = F.softmax(output_word_en_en, dim=1).detach()
-        output_word_fr_en = F.log_softmax(output_word_fr_en, dim=1)
-        loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en)
-        loss = loss.sum() / (self.batch_size * seq_len_en)
-
-        # output_word_en_fr = F.softmax(output_word_en_fr, dim=1).detach()
-        output_word_en_fr = F.softmax(output_word_en_fr, dim=1).detach()
-        output_word_fr_fr = F.log_softmax(output_word_fr_fr, dim=1)
-        loss_2 = unlabeled_loss_function(output_word_fr_fr, output_word_en_fr)
-        loss_2 = loss_2.sum() / (self.batch_size * seq_len_fr)
-
-
-
-        return loss, loss_2
+        return recover_loss_onEn, recover_loss_onFr
 
     def word_trans(self, batch_input, use_bert, isTrain=True):
         unlabeled_data_en, unlabeled_data_fr = batch_input
