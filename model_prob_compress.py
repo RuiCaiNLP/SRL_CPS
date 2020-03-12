@@ -152,7 +152,7 @@ class SR_Compressor(nn.Module):
         compressed_emb = compressed_emb.unsqueeze(2).expand(self.batch_size, seq_len, self.target_vocab_size-1, 256)
 
         if para:
-            mixed_emb = weights_word*compressed_emb.detach()
+            mixed_emb = weights_word*compressed_emb
         else:
             mixed_emb = weights_word * compressed_emb
 
@@ -191,7 +191,7 @@ class SR_Matcher(nn.Module):
         if not para:
             scores = torch.bmm(y.view(self.batch_size, seq_len, 256), role_embs)
         else:
-            scores = torch.bmm(y.view(self.batch_size, seq_len, 256).detach(), role_embs)
+            scores = torch.bmm(y.view(self.batch_size, seq_len, 256), role_embs)
         scores = scores.view(self.batch_size * seq_len, -1)
         return scores
 

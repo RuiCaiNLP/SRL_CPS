@@ -406,10 +406,10 @@ if __name__ == '__main__':
 
                     loss, loss_2 =  srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True,
                                                         self_constrain=False, use_bert=use_bert)
-                    ##optimizer.zero_grad()
-                    ##(0.05*loss+0.05*loss_2).backward()
-                    #(0.01*l2loss).backward()
-                    ##optimizer.step()
+                    optimizer.zero_grad()
+                    (0.5*loss+0.5*loss_2).backward()
+
+                    optimizer.step()
                     #for param in srl_model.SR_Compressor.parameters():
                     #    param.requires_grad = True
 
