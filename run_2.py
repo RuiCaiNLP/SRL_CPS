@@ -400,9 +400,9 @@ if __name__ == '__main__':
                                                                    lang="Fr",use_bert=True, para=True)
                     unlabeled_data_en = next(unlabeled_Generator_En)
                     unlabeled_data_fr = next(unlabeled_Generator_Fr)
-                if epoch > 1:
-                    for param in srl_model.SR_Compressor.parameters():
-                        param.requires_grad = False
+                if epoch > -1:
+                    #for param in srl_model.SR_Compressor.parameters():
+                    #    param.requires_grad = False
 
                     loss, loss_2 =  srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True,
                                                         self_constrain=False, use_bert=use_bert)
@@ -410,8 +410,8 @@ if __name__ == '__main__':
                     (loss+loss_2).backward()
                     #(0.01*l2loss).backward()
                     optimizer.step()
-                    for param in srl_model.SR_Compressor.parameters():
-                        param.requires_grad = True
+                    #for param in srl_model.SR_Compressor.parameters():
+                    #    param.requires_grad = True
 
                     if batch_i % 50 == 0:
                         #print("para loss:", batch_i, loss.item(), loss_2.item(), copy_loss.item(), copy_loss_fr.item())

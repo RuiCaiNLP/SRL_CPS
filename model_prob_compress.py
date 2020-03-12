@@ -58,8 +58,8 @@ class SR_Labeler(nn.Module):
             torch.from_numpy(
                 np.zeros((self.mlp_size + 1, self.target_vocab_size * (self.mlp_size + 1))).astype("float32")).to(
                 device))
-        self.mlp_arg = nn.Sequential(nn.Linear(2 * self.bilstm_hidden_size, self.mlp_size), nn.ReLU())
-        self.mlp_pred = nn.Sequential(nn.Linear(2 * self.bilstm_hidden_size, self.mlp_size), nn.ReLU())
+        self.mlp_arg = nn.Sequential(nn.Linear(2 * self.bilstm_hidden_size, self.mlp_size), nn.Tanh())
+        self.mlp_pred = nn.Sequential(nn.Linear(2 * self.bilstm_hidden_size, self.mlp_size), nn.Tanh())
 
     def forward(self, pretrained_emb, flag_emb, predicates_1D, seq_len, use_bert=False, para=False):
         self.bilstm_hidden_state = (
