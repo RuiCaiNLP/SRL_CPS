@@ -377,13 +377,16 @@ if __name__ == '__main__':
                 if batch_i % 50 == 0:
                     print("epoch:", epoch, batch_i, loss.item(), learn_loss.item())
                 optimizer.zero_grad()
-                (loss + learn_loss).backward()
+                if epoch < 4:
+                    (loss + learn_loss).backward()
+                else:
+                    loss.backward()
                 optimizer.step()
                 sys.stdout.flush()
 
 
                 #batch_size=1
-
+                """
                 try:
                     unlabeled_data_en = next(unlabeled_Generator_En)
                     unlabeled_data_fr = next(unlabeled_Generator_Fr)
@@ -417,7 +420,7 @@ if __name__ == '__main__':
                         #print("para loss:", batch_i, loss.item(), loss_2.item(), copy_loss.item(), copy_loss_fr.item())
                         print('trans loss', loss, loss_2)
                         #print(coverage)
-
+                """
                 if batch_i > 0 and batch_i % show_steps == 0:
                     srl_model.eval()
                     _, pred = torch.max(out, 1)
