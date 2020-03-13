@@ -729,7 +729,7 @@ class SR_Model(nn.Module):
 
 
             bert_emb = bert_emb.detach()
-            bert_emb_noise = gaussian(bert_emb, isTrain, 0, 0.1).detach()
+            #bert_emb_noise = gaussian(bert_emb, isTrain, 0, 0.1).detach()
 
 
         seq_len = flag_emb.shape[1]
@@ -746,7 +746,7 @@ class SR_Model(nn.Module):
                                             flag_emb.detach(), word_id_emb, predicates_1D, seq_len, para=False,
                                             use_bert=True)
 
-            output_word = self.SR_Matcher(role_embs, bert_emb_noise.detach(), flag_emb.detach(), word_id_emb.detach(), seq_len, copy=True,
+            output_word = self.SR_Matcher(role_embs, bert_emb.detach(), flag_emb.detach(), word_id_emb.detach(), seq_len, copy=True,
                                           para=False, use_bert=True)
         else:
             role_embs = self.SR_Compressor(SRL_input_probs, bert_emb.detach(),

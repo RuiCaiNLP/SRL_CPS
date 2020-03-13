@@ -377,7 +377,7 @@ if __name__ == '__main__':
                 if batch_i % 50 == 0:
                     print("epoch:", epoch, batch_i, loss.item(), learn_loss.item())
                 optimizer.zero_grad()
-                if epoch < 4:
+                if epoch < 6:
                     (loss + learn_loss).backward()
                 else:
                     loss.backward()
