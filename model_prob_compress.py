@@ -91,7 +91,7 @@ class SR_Labeler(nn.Module):
 class SR_Compressor(nn.Module):
     def __init__(self, model_params):
         super(SR_Compressor, self).__init__()
-        self.dropout_input = nn.Dropout(p=0.1)
+        self.dropout_input = nn.Dropout(p=0.0)
         #self.dropout_hidden = nn.Dropout(p=0.0)
         #self.dropout_mlp = model_params['dropout_mlp']
         self.batch_size = model_params['batch_size']
@@ -122,8 +122,8 @@ class SR_Compressor(nn.Module):
                                          bidirectional=True,
                                          bias=True, batch_first=True)
 
-        self.hidden2weights = nn.Sequential(nn.Linear(self.target_vocab_size*2, self.target_vocab_size-1),
-                                            nn.Sigmoid())
+        self.hidden2weights = nn.Linear(self.target_vocab_size*2, self.target_vocab_size-1),
+
 
         self.compress_emb = nn.Sequential(nn.Linear(768, 256),
                                           nn.Tanh())
@@ -143,7 +143,7 @@ class SR_Compressor(nn.Module):
 
         #B T R
         weights_word = self.hidden2weights(bilstm_output)
-
+        weights_word = F.softmax(weights_word, 2)
         #B T H
         compressed_emb = self.compress_emb(word_emb)
 
