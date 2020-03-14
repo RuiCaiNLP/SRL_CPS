@@ -91,7 +91,7 @@ class SR_Labeler(nn.Module):
 class SR_Compressor(nn.Module):
     def __init__(self, model_params):
         super(SR_Compressor, self).__init__()
-        #self.dropout_word = nn.Dropout(p=0.0)
+        self.dropout_input = nn.Dropout(p=0.3)
         #self.dropout_hidden = nn.Dropout(p=0.0)
         #self.dropout_mlp = model_params['dropout_mlp']
         self.batch_size = model_params['batch_size']
@@ -135,7 +135,7 @@ class SR_Compressor(nn.Module):
             torch.zeros(2 * 2, self.batch_size, self.target_vocab_size).to(device),
             torch.zeros(2 * 2, self.batch_size, self.target_vocab_size).to(device))
 
-        SRL_input = SRL_input.view(self.batch_size, seq_len, -1)
+        SRL_input = self.dropout_input(SRL_input.view(self.batch_size, seq_len, -1))
 
         bilstm_output, (_, bilstm_final_state_bert) = self.bilstm_layer_bert(SRL_input,
                                                                                   self.bilstm_hidden_state_bert)
