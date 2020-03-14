@@ -122,7 +122,7 @@ class SR_Compressor(nn.Module):
                                          bidirectional=True,
                                          bias=True, batch_first=True)
 
-        self.hidden2weights = nn.Linear(self.target_vocab_size*2, self.target_vocab_size-1)
+        self.hidden2weights = nn.Linear(self.target_vocab_size*2, self.target_vocab_size)
 
 
         self.compress_emb = nn.Sequential(nn.Linear(768, 256),
@@ -756,8 +756,8 @@ class SR_Model(nn.Module):
             output_word = self.SR_Matcher(role_embs, bert_emb.detach(), flag_emb.detach(), word_id_emb.detach(),
                                           seq_len, copy=False,
                                           para=False, use_bert=True)
-        score4Null = torch.zeros_like(output_word[:, 1:2])
-        output_word = torch.cat((output_word[:, 0:1], score4Null, output_word[:, 1:]), 1)
+        #score4Null = torch.zeros_like(output_word[:, 1:2])
+        #output_word = torch.cat((output_word[:, 0:1], score4Null, output_word[:, 1:]), 1)
 
 
         recover_loss = self.learn_loss(SRL_input, output_word, seq_len)
