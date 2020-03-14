@@ -122,7 +122,7 @@ class SR_Compressor(nn.Module):
                                          bidirectional=True,
                                          bias=True, batch_first=True)
 
-        self.hidden2weights = nn.Linear(self.target_vocab_size*2, self.target_vocab_size-1),
+        self.hidden2weights = nn.Linear(self.target_vocab_size*2, self.target_vocab_size-1)
 
 
         self.compress_emb = nn.Sequential(nn.Linear(768, 256),
