@@ -148,8 +148,8 @@ class SR_Compressor(nn.Module):
         compressed_emb = self.compress_emb(word_emb)
 
         #-> B T R H
-        weights_word = weights_word.view(self.batch_size, seq_len, self.target_vocab_size-1, 1)
-        compressed_emb = compressed_emb.unsqueeze(2).expand(self.batch_size, seq_len, self.target_vocab_size-1, 256)
+        weights_word = weights_word.view(self.batch_size, seq_len, self.target_vocab_size, 1)
+        compressed_emb = compressed_emb.unsqueeze(2).expand(self.batch_size, seq_len, self.target_vocab_size, 256)
 
         if para:
             mixed_emb = weights_word*compressed_emb
