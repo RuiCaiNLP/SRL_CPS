@@ -91,7 +91,7 @@ class SR_Labeler(nn.Module):
 class SR_Compressor(nn.Module):
     def __init__(self, model_params):
         super(SR_Compressor, self).__init__()
-        self.dropout_input = nn.Dropout(p=0.3)
+        self.dropout_input = nn.Dropout(p=0.1)
         #self.dropout_hidden = nn.Dropout(p=0.0)
         #self.dropout_mlp = model_params['dropout_mlp']
         self.batch_size = model_params['batch_size']
