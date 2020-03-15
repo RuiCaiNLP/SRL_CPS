@@ -144,12 +144,13 @@ class SR_Compressor(nn.Module):
         #B T R
         weights_word = self.hidden2weights(bilstm_output)
         weights_word = F.softmax(weights_word, 2)
+        weights_word = weights_word[:,:, 1:]
         #B T H
         compressed_emb = self.compress_emb(word_emb)
 
         #-> B T R H
-        weights_word = weights_word.view(self.batch_size, seq_len, self.target_vocab_size, 1)
-        compressed_emb = compressed_emb.unsqueeze(2).expand(self.batch_size, seq_len, self.target_vocab_size, 256)
+        weights_word = weights_word.view(self.batch_size, seq_len, self.target_vocab_size-1, 1)
+        compressed_emb = compressed_emb.unsqueeze(2).expand(self.batch_size, seq_len, self.target_vocab_size-1, 256)
 
         if para:
             mixed_emb = weights_word*compressed_emb
@@ -387,7 +388,7 @@ class SR_Model(nn.Module):
                     break
                 for j in range(len(bert_emb_en[i])):
                     if j >= actual_lens_en[i]:
-                        bert_emb_en[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
+                        bert_emb_en[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32")+0.1)
             bert_emb_en_noise = gaussian(bert_emb_en, isTrain, 0, 0.1).detach()
             bert_emb_en = bert_emb_en.detach()
 
@@ -756,8 +757,8 @@ class SR_Model(nn.Module):
             output_word = self.SR_Matcher(role_embs, bert_emb.detach(), flag_emb.detach(), word_id_emb.detach(),
                                           seq_len, copy=False,
                                           para=False, use_bert=True)
-        #score4Null = torch.zeros_like(output_word[:, 1:2])
-        #output_word = torch.cat((output_word[:, 0:1], score4Null, output_word[:, 1:]), 1)
+        score4Null = torch.zeros_like(output_word[:, 1:2])
+        output_word = torch.cat((output_word[:, 0:1], score4Null, output_word[:, 1:]), 1)
 
 
         recover_loss = self.learn_loss(SRL_input, output_word, seq_len)
