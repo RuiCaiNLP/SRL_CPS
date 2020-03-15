@@ -122,10 +122,10 @@ class SR_Compressor(nn.Module):
                                          bidirectional=True,
                                          bias=True, batch_first=True)
 
-        self.hidden2weights = nn.Linear(self.target_vocab_size*2, self.target_vocab_size)
+        self.hidden2weights = nn.Linear(self.target_vocab_size*2, self.target_vocab_size-1)
 
 
-        self.compress_emb = nn.Sequential(nn.Linear(768, 256),
+        self.compress_emb = nn.Sequential(nn.Linear(768, 128),
                                           nn.Tanh())
 
 
@@ -144,13 +144,12 @@ class SR_Compressor(nn.Module):
         #B T R
         weights_word = self.hidden2weights(bilstm_output)
         weights_word = F.softmax(weights_word, 2)
-        weights_word = weights_word[:,:, 1:]
         #B T H
         compressed_emb = self.compress_emb(word_emb)
 
         #-> B T R H
         weights_word = weights_word.view(self.batch_size, seq_len, self.target_vocab_size-1, 1)
-        compressed_emb = compressed_emb.unsqueeze(2).expand(self.batch_size, seq_len, self.target_vocab_size-1, 256)
+        compressed_emb = compressed_emb.unsqueeze(2).expand(self.batch_size, seq_len, self.target_vocab_size-1, 128)
 
         if para:
             mixed_emb = weights_word*compressed_emb
@@ -178,14 +177,32 @@ class SR_Matcher(nn.Module):
 
         self.bilstm_num_layers = model_params['bilstm_num_layers']
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
-        self.compress_emb = nn.Sequential(nn.Linear(768, 256), nn.Tanh())
+        self.compress_emb = nn.Sequential(nn.Linear(768, 128), nn.Tanh())
         self.matrix = nn.Parameter(
             get_torch_variable_from_np(np.zeros((256, 256)).astype("float32")))
 
+        self.specific_NULL_emb = nn.Sequential(nn.Linear(768, 256),nn.Tanh(),
+                                               nn.Linear(256, 128), nn.Tanh())
+
+        self.scorer = nn.Sequential(nn.Linear(256, 64),nn.Tanh(),
+                                    nn.Linear(64, 1))
+
 
     def forward(self, role_embs, pretrained_emb, flag_emb, word_id_emb, seq_len, use_bert=False, copy = False, para=False):
-        query_emb = self.compress_emb(pretrained_emb).view(self.batch_size * seq_len, 256)
 
+        # B T H
+        Null_embs = self.specific_NULL_emb(pretrained_emb).unsqueeze(2)
+        role_embs = role_embs.unsqueeze(1).expand(self.batch_size, seq_len, self.target_vocab_size-1, 128)
+        all_embs = torch.cat((role_embs[:,:,0:1], Null_embs, role_embs[:,:,1:]), 2)
+
+        query_emb = self.compress_emb(pretrained_emb).view(self.batch_size, seq_len, 128)
+        query_emb = query_emb.unsqueeze(2).expand(self.batch_size, seq_len, self.target_vocab_size, 128)
+
+        union_embs = torch.cat((all_embs, query_emb), 3)
+        scores = self.scorer(union_embs).view(self.batch_size*seq_len, self.target_vocab_size)
+
+        """
+        query_emb = self.compress_emb(pretrained_emb).view(self.batch_size * seq_len, 256)
         ## B R H * B T H -> B T R
         y = torch.mm(query_emb, self.matrix)
         role_embs = role_embs.transpose(1, 2).contiguous()
@@ -194,6 +211,7 @@ class SR_Matcher(nn.Module):
         else:
             scores = torch.bmm(y.view(self.batch_size, seq_len, 256), role_embs)
         scores = scores.view(self.batch_size * seq_len, -1)
+        """
         return scores
 
 class Discriminator(nn.Module):
@@ -757,8 +775,8 @@ class SR_Model(nn.Module):
             output_word = self.SR_Matcher(role_embs, bert_emb.detach(), flag_emb.detach(), word_id_emb.detach(),
                                           seq_len, copy=False,
                                           para=False, use_bert=True)
-        score4Null = torch.zeros_like(output_word[:, 1:2])
-        output_word = torch.cat((output_word[:, 0:1], score4Null, output_word[:, 1:]), 1)
+        #score4Null = torch.zeros_like(output_word[:, 1:2])
+        #output_word = torch.cat((output_word[:, 0:1], score4Null, output_word[:, 1:]), 1)
 
 
         recover_loss = self.learn_loss(SRL_input, output_word, seq_len)
