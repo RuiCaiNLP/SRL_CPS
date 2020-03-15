@@ -48,7 +48,7 @@ class SR_Labeler(nn.Module):
                                     bidirectional=True,
                                     bias=True, batch_first=True)
 
-        self.bilstm_bert = nn.LSTM(input_size=256 + self.flag_emb_size,
+        self.bilstm_bert = nn.LSTM(input_size=768 + self.flag_emb_size,
                                    hidden_size=self.bilstm_hidden_size, num_layers=self.bilstm_num_layers,
                                    bidirectional=True,
                                    bias=True, batch_first=True)
@@ -117,7 +117,7 @@ class SR_Compressor(nn.Module):
                                          bidirectional=True,
                                          bias=True, batch_first=True)
 
-        self.bilstm_layer_bert = nn.LSTM(input_size=256 + self.target_vocab_size + 0 * self.flag_emb_size,
+        self.bilstm_layer_bert = nn.LSTM(input_size=768 + self.target_vocab_size + 0 * self.flag_emb_size,
                                          hidden_size=(self.target_vocab_size-1) * 10, num_layers=2,
                                          bidirectional=True,
                                          bias=True, batch_first=True)
@@ -163,7 +163,7 @@ class SR_Matcher(nn.Module):
         self.bilstm_num_layers = model_params['bilstm_num_layers']
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
         self.compress_word = nn.Sequential(nn.Linear(300 + 2 * self.flag_emb_size, 20), nn.ReLU())
-        self.compress_bert = nn.Sequential(nn.Linear(256 + 0 * self.flag_emb_size, 20), nn.ReLU())
+        self.compress_bert = nn.Sequential(nn.Linear(768 + 0 * self.flag_emb_size, 20), nn.ReLU())
         self.scorer = nn.Sequential(nn.Linear(40, 20),
                                     nn.ReLU(),
 
@@ -738,7 +738,7 @@ class SR_Model(nn.Module):
             pretrain_emb = self.fr_pretrained_embedding(pretrain_batch).detach()
             #bert_emb = self.Fr_LinearTrans(bert_emb).detach()
             #bert_emb = self.Fr2En_Trans(bert_emb).detach()
-        bert_emb = self.bert_FeatureExtractor(bert_emb)
+        #bert_emb = self.bert_FeatureExtractor(bert_emb)
         seq_len = flag_emb.shape[1]
         if not use_bert:
             SRL_output = self.SR_Labeler(pretrain_emb, flag_emb, predicates_1D, seq_len, para=False)
