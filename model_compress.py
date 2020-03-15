@@ -694,10 +694,10 @@ class SR_Model(nn.Module):
 
     def forward(self, batch_input, lang='En', unlabeled=False, self_constrain=False, use_bert=False, isTrain=False):
         if unlabeled:
-            #loss, loss_2, copy_loss_en, copy_loss_fr = self.parallel_train_(batch_input, use_bert)
+            loss, loss_2, copy_loss_en, copy_loss_fr = self.parallel_train_(batch_input, use_bert)
 
-            #return loss, loss_2, copy_loss_en, copy_loss_fr
-            l2loss = self.word_trans(batch_input, use_bert)
+            return loss, loss_2, copy_loss_en, copy_loss_fr
+            #l2loss = self.word_trans(batch_input, use_bert)
             return l2loss
 
         pretrain_batch = get_torch_variable_from_np(batch_input['pretrain'])
