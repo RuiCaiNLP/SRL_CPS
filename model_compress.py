@@ -333,6 +333,47 @@ class SR_Model(nn.Module):
         loss = loss.sum() / (self.batch_size * seq_len)
         return loss
 
+    def fileter_word(self, SRL_out_en_en, SRL_out_en_fr, seq_len, seq_len_fr):
+        SRL_out_en_en = SRL_out_en_en.view(self.batch_size, seq_len, self.target_vocab_size)
+        SRL_out_en_fr = SRL_out_en_fr.view(self.batch_size, seq_len_fr, self.target_vocab_size)
+        result_en_en = torch.max(SRL_out_en_en, dim=2)[1].view(self.batch_size, seq_len)
+        result_en_fr = torch.max(SRL_out_en_fr, dim=2)[1].view(self.batch_size, seq_len_fr)
+        mask_en = np.zeros_like(result_en_en)
+        mask_fr = np.zeros_like(result_en_fr)
+        roles_en_en = np.zeros((self.batch_size, self.target_vocab_size))-1
+        roles_en_fr = np.zeros((self.batch_size, self.target_vocab_size))-1
+
+        # -1: no this role
+        # >=0: index of arguments
+        # -2: duplicate
+        for i in range(self.batch_size):
+            for j in range(seq_len):
+                this_result = result_en_en[i][j]
+                if this_result > 1:
+                    if roles_en_en[i][this_result]!= -1:
+                        roles_en_en[i][this_result] = -2
+                    else:
+                        roles_en_en[i][this_result] = j
+
+        for i in range(self.batch_size):
+            for j in range(seq_len_fr):
+                this_result = result_en_fr[i][j]
+                if this_result > 1:
+                    if roles_en_fr[i][this_result]!= -1:
+                        roles_en_fr[i][this_result] = -2
+                    else:
+                        roles_en_fr[i][this_result] = j
+
+        for i in range(self.batch_size):
+            for j in range(self.target_vocab_size):
+                if j <=1:
+                    continue
+                if roles_en_en[i][j]>=0 and roles_en_fr[i][j]>0:
+                    mask_en[i][int(roles_en_en[i][j])] = 1
+                    mask_fr[i][int(roles_en_fr[i][j])] = 1
+
+        return mask_en, mask_fr
+
     def parallel_train_(self, batch_input, use_bert, isTrain=True):
         unlabeled_data_en, unlabeled_data_fr = batch_input
 
@@ -439,13 +480,16 @@ class SR_Model(nn.Module):
 
         """
         Fr event vector, Fr word
-        """
+        
         output_word_fr_fr = self.SR_Matcher(pred_recur_fr, bert_emb_fr, flag_emb_fr.detach(), None, seq_len_fr,
                                             para=True, use_bert=True)
         score4Null = torch.zeros_like(output_word_fr_fr[:, 1:2])
         output_word_fr_fr = torch.cat((output_word_fr_fr[:, 0:1], score4Null, output_word_fr_fr[:, 1:]), 1)
+        """
 
-
+        mask_en_word, mask_fr_word = self.fileter_word(output_word_en_en,output_word_en_fr, seq_len, seq_len_fr)
+        mask_en_word = get_torch_variable_from_np(mask_en_word)
+        mask_fr_word = get_torch_variable_from_np(mask_fr_word)
 
 
 
@@ -457,14 +501,14 @@ class SR_Model(nn.Module):
         #output_word_en_en = F.softmax(output_word_en_en, dim=1).detach()
         output_word_en_en = F.softmax(SRL_output, dim=1).detach()
         output_word_fr_en = F.log_softmax(output_word_fr_en, dim=1)
-        loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en)
+        loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en).sum(dim=1)*mask_en_word.view(-1)
         loss = loss.sum() / (self.batch_size * seq_len_en)
 
         # output_word_en_fr = F.softmax(output_word_en_fr, dim=1).detach()
         output_word_en_fr = F.softmax(output_word_en_fr, dim=1).detach()
         #output_word_fr_fr = F.log_softmax(output_word_fr_fr, dim=1)
         output_word_fr_fr = F.log_softmax(SRL_output_fr, dim=1)
-        loss_2 = unlabeled_loss_function(output_word_fr_fr, output_word_en_fr)
+        loss_2 = unlabeled_loss_function(output_word_fr_fr, output_word_en_fr).sum(dim=1)*mask_fr_word.view(-1)
         loss_2 = loss_2.sum() / (self.batch_size * seq_len_fr)
 
 
