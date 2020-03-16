@@ -454,14 +454,16 @@ class SR_Model(nn.Module):
         # output_word_en_en = F.softmax(output_word_en_en, dim=1).detach()
         # output_word_fr_en = F.log_softmax(output_word_fr_en, dim=1)
         # loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en)
-        output_word_en_en = F.softmax(output_word_en_en, dim=1).detach()
+        #output_word_en_en = F.softmax(output_word_en_en, dim=1).detach()
+        output_word_en_en = F.softmax(SRL_output, dim=1).detach()
         output_word_fr_en = F.log_softmax(output_word_fr_en, dim=1)
         loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en)
         loss = loss.sum() / (self.batch_size * seq_len_en)
 
         # output_word_en_fr = F.softmax(output_word_en_fr, dim=1).detach()
         output_word_en_fr = F.softmax(output_word_en_fr, dim=1).detach()
-        output_word_fr_fr = F.log_softmax(output_word_fr_fr, dim=1)
+        #output_word_fr_fr = F.log_softmax(output_word_fr_fr, dim=1)
+        output_word_fr_fr = F.log_softmax(SRL_output_fr, dim=1)
         loss_2 = unlabeled_loss_function(output_word_fr_fr, output_word_en_fr)
         loss_2 = loss_2.sum() / (self.batch_size * seq_len_fr)
 
