@@ -338,8 +338,8 @@ class SR_Model(nn.Module):
         SRL_out_en_fr = SRL_out_en_fr.view(self.batch_size, seq_len_fr, self.target_vocab_size)
         result_en_en = torch.max(SRL_out_en_en, dim=2)[1].view(self.batch_size, seq_len)
         result_en_fr = torch.max(SRL_out_en_fr, dim=2)[1].view(self.batch_size, seq_len_fr)
-        mask_en = np.zeros_like(result_en_en)
-        mask_fr = np.zeros_like(result_en_fr)
+        mask_en = np.zeros_like((self.batch_size, seq_len))
+        mask_fr = np.zeros_like((self.batch_size, seq_len_fr))
         roles_en_en = np.zeros((self.batch_size, self.target_vocab_size))-1
         roles_en_fr = np.zeros((self.batch_size, self.target_vocab_size))-1
 
