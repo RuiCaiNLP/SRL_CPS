@@ -418,7 +418,7 @@ if __name__ == '__main__':
 
                     if batch_i % 50 == 0:
                         #print("para loss:", batch_i, loss.item(), loss_2.item(), copy_loss.item(), copy_loss_fr.item())
-                        print('trans loss', loss, loss_2)
+                        print('trans loss', loss, loss_2, c, d)
                         #print(coverage)
 
                 if batch_i > 0 and batch_i % show_steps == 0:
