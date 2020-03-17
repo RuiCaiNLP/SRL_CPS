@@ -480,12 +480,13 @@ class SR_Model(nn.Module):
 
         """
         Fr event vector, Fr word
-        
+         """
+
         output_word_fr_fr = self.SR_Matcher(pred_recur_fr, bert_emb_fr, flag_emb_fr.detach(), None, seq_len_fr,
                                             para=True, use_bert=True)
         score4Null = torch.zeros_like(output_word_fr_fr[:, 1:2])
         output_word_fr_fr = torch.cat((output_word_fr_fr[:, 0:1], score4Null, output_word_fr_fr[:, 1:]), 1)
-        """
+
 
         mask_en_word, mask_fr_word = self.fileter_word(output_word_en_en,output_word_en_fr, seq_len, seq_len_fr)
         mask_en_word = get_torch_variable_from_np(mask_en_word)
@@ -499,15 +500,15 @@ class SR_Model(nn.Module):
         # output_word_fr_en = F.log_softmax(output_word_fr_en, dim=1)
         # loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en)
         #output_word_en_en = F.softmax(output_word_en_en, dim=1).detach()
-        output_word_en_en = F.softmax(SRL_output, dim=1).detach()
+        output_word_en_en = F.softmax(output_word_en_en, dim=1).detach()
         output_word_fr_en = F.log_softmax(output_word_fr_en, dim=1)
         loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en).sum(dim=1)#*mask_en_word.view(-1)
         loss = loss.sum() / (self.batch_size * seq_len_en)
 
         # output_word_en_fr = F.softmax(output_word_en_fr, dim=1).detach()
         output_word_en_fr = F.softmax(output_word_en_fr, dim=1).detach()
-        #output_word_fr_fr = F.log_softmax(output_word_fr_fr, dim=1)
-        output_word_fr_fr = F.log_softmax(SRL_output_fr, dim=1)
+        output_word_fr_fr = F.log_softmax(output_word_fr_fr, dim=1)
+        #output_word_fr_fr = F.log_softmax(SRL_output_fr, dim=1)
         loss_2 = unlabeled_loss_function(output_word_fr_fr, output_word_en_fr).sum(dim=1)#*mask_fr_word.view(-1)
         loss_2 = loss_2.sum() / (self.batch_size * seq_len_fr)
 
