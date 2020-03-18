@@ -496,8 +496,8 @@ class SR_Model(nn.Module):
         mask_fr_en = get_torch_variable_from_np(mask_fr_en)
         mask_fr_fr = get_torch_variable_from_np(mask_fr_fr)
 
-        mask_en_word = mask_en_en + mask_fr_en
-        mask_fr_word = mask_en_fr + mask_fr_fr
+        mask_en_word = mask_en_en #+ mask_fr_en
+        mask_fr_word = mask_en_fr #+ mask_fr_fr
 
 
 
