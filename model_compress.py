@@ -518,20 +518,20 @@ class SR_Model(nn.Module):
         output_word_fr_en = F.log_softmax(output_word_fr_en, dim=1)
         loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en).sum(dim=1)*mask_en_word.view(-1)
         #loss = loss.sum() / mask_en_word.sum() #(self.batch_size * seq_len_en)
-        if mask_en_word.sum().cpu().numpy() > 1:
-            loss = loss.sum() / mask_en_word.sum()#(self.batch_size * seq_len_fr)
-        else:
-            loss = loss.sum()
+        #if mask_en_word.sum().cpu().numpy() > 1:
+        loss = loss.sum() / (self.batch_size * self.target_vocab_size)
+        #else:
+        #    loss = loss.sum()
 
         # output_word_en_fr = F.softmax(output_word_en_fr, dim=1).detach()
         output_word_en_fr = F.softmax(output_word_en_fr, dim=1).detach()
         output_word_fr_fr = F.log_softmax(output_word_fr_fr, dim=1)
         #output_word_fr_fr = F.log_softmax(SRL_output_fr, dim=1)
         loss_2 = unlabeled_loss_function(output_word_fr_fr, output_word_en_fr).sum(dim=1)*mask_fr_word.view(-1)
-        if mask_fr_word.sum().cpu().numpy() > 1:
-            loss_2 = loss_2.sum() / mask_fr_word.sum()#(self.batch_size * seq_len_fr)
-        else:
-            loss_2 = loss_2.sum()
+        #if mask_fr_word.sum().cpu().numpy() > 1:
+        loss_2 = loss_2.sum() / (self.batch_size * self.target_vocab_size)
+        #else:
+        #    loss_2 = loss_2.sum()
 
         #print(mask_en_word.sum())
         #print(mask_fr_word.sum())
