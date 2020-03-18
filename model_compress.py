@@ -333,11 +333,18 @@ class SR_Model(nn.Module):
         loss = loss.sum() / (self.batch_size * seq_len)
         return loss
 
-    def filter_word(self, SRL_out_en_en, SRL_out_en_fr, seq_len, seq_len_fr):
+    def filter_word(self, SRL_pred, SRL_out_en_en, SRL_out_en_fr, seq_len, seq_len_fr):
+        SRL_pred = SRL_pred.view(self.batch_size, seq_len, self.target_vocab_size)
         SRL_out_en_en = SRL_out_en_en.view(self.batch_size, seq_len, self.target_vocab_size)
         SRL_out_en_fr = SRL_out_en_fr.view(self.batch_size, seq_len_fr, self.target_vocab_size)
+        result_en = torch.max(SRL_pred, dim=2)[1].view(self.batch_size, seq_len)
         result_en_en = torch.max(SRL_out_en_en, dim=2)[1].view(self.batch_size, seq_len)
         result_en_fr = torch.max(SRL_out_en_fr, dim=2)[1].view(self.batch_size, seq_len_fr)
+
+        for i in range(self.batch_size):
+            for j in range(seq_len):
+                if result_en[i][j] != result_en_en[i][j]:
+                    result_en_en[i][j] = 1
         mask_en = np.zeros((self.batch_size, seq_len))
         mask_fr = np.zeros((self.batch_size, seq_len_fr))
         roles_en_en = np.zeros((self.batch_size, self.target_vocab_size))-1
@@ -488,13 +495,13 @@ class SR_Model(nn.Module):
         output_word_fr_fr = torch.cat((output_word_fr_fr[:, 0:1], score4Null, output_word_fr_fr[:, 1:]), 1)
 
 
-        mask_en_en, mask_en_fr = self.filter_word(output_word_en_en,output_word_en_fr, seq_len, seq_len_fr)
+        mask_en_en, mask_en_fr = self.filter_word(SRL_input, output_word_en_en,output_word_en_fr, seq_len, seq_len_fr)
         mask_en_en = get_torch_variable_from_np(mask_en_en)
         mask_en_fr = get_torch_variable_from_np(mask_en_fr)
 
-        mask_fr_en, mask_fr_fr = self.filter_word(output_word_fr_en, output_word_fr_fr, seq_len, seq_len_fr)
-        mask_fr_en = get_torch_variable_from_np(mask_fr_en)
-        mask_fr_fr = get_torch_variable_from_np(mask_fr_fr)
+        #mask_fr_en, mask_fr_fr = self.filter_word(output_word_fr_en, output_word_fr_fr, seq_len, seq_len_fr)
+        #mask_fr_en = get_torch_variable_from_np(mask_fr_en)
+        #mask_fr_fr = get_torch_variable_from_np(mask_fr_fr)
 
         mask_en_word = mask_en_en #+ mask_fr_en
         mask_fr_word = mask_en_fr #+ mask_fr_fr
