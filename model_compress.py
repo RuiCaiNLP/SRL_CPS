@@ -381,6 +381,50 @@ class SR_Model(nn.Module):
 
         return mask_en, mask_fr
 
+    def filter_word_fr(self, SRL_out_fr_en, SRL_out_fr_fr, seq_len, seq_len_fr):
+        SRL_out_fr_en = SRL_out_fr_en.view(self.batch_size, seq_len, self.target_vocab_size)
+        SRL_out_fr_fr = SRL_out_fr_fr.view(self.batch_size, seq_len_fr, self.target_vocab_size)
+
+        result_fr_en = torch.max(SRL_out_fr_en, dim=2)[1].view(self.batch_size, seq_len)
+        result_fr_fr = torch.max(SRL_out_fr_fr, dim=2)[1].view(self.batch_size, seq_len_fr)
+
+
+        mask_en = np.zeros((self.batch_size, seq_len))
+        mask_fr = np.zeros((self.batch_size, seq_len_fr))
+        roles_fr_en = np.zeros((self.batch_size, self.target_vocab_size))-1
+        roles_fr_fr = np.zeros((self.batch_size, self.target_vocab_size))-1
+
+        # -1: no this role
+        # >=0: index of arguments
+        # -2: duplicate
+        for i in range(self.batch_size):
+            for j in range(seq_len):
+                this_result = result_fr_en[i][j]
+                if this_result > 1:
+                    if roles_fr_en[i][this_result]!= -1:
+                        roles_fr_en[i][this_result] = -2
+                    else:
+                        roles_fr_en[i][this_result] = j
+
+        for i in range(self.batch_size):
+            for j in range(seq_len_fr):
+                this_result = result_fr_fr[i][j]
+                if this_result > 1:
+                    if roles_fr_fr[i][this_result]!= -1:
+                        roles_fr_fr[i][this_result] = -2
+                    else:
+                        roles_fr_fr[i][this_result] = j
+
+        for i in range(self.batch_size):
+            for j in range(self.target_vocab_size):
+                if j <=1:
+                    continue
+                if roles_fr_en[i][j]>=0 and roles_fr_fr[i][j]>0:
+                    mask_en[i][int(roles_fr_en[i][j])] = 1
+                    mask_fr[i][int(roles_fr_fr[i][j])] = 1
+
+        return mask_en, mask_fr
+
     def parallel_train_(self, batch_input, use_bert, isTrain=True):
         unlabeled_data_en, unlabeled_data_fr = batch_input
 
@@ -499,12 +543,12 @@ class SR_Model(nn.Module):
         mask_en_en = get_torch_variable_from_np(mask_en_en)
         mask_en_fr = get_torch_variable_from_np(mask_en_fr)
 
-        #mask_fr_en, mask_fr_fr = self.filter_word(output_word_fr_en, output_word_fr_fr, seq_len, seq_len_fr)
-        #mask_fr_en = get_torch_variable_from_np(mask_fr_en)
-        #mask_fr_fr = get_torch_variable_from_np(mask_fr_fr)
+        mask_fr_en, mask_fr_fr = self.filter_word_fr(output_word_fr_en, output_word_fr_fr, seq_len, seq_len_fr)
+        mask_fr_en = get_torch_variable_from_np(mask_fr_en)
+        mask_fr_fr = get_torch_variable_from_np(mask_fr_fr)
 
-        mask_en_word = mask_en_en #+ mask_fr_en
-        mask_fr_word = mask_en_fr #+ mask_fr_fr
+        mask_en_word = mask_en_en + mask_fr_en - mask_en_en*mask_fr_en
+        mask_fr_word = mask_en_fr + mask_fr_fr - mask_en_fr*mask_fr_fr
 
 
 
@@ -519,7 +563,7 @@ class SR_Model(nn.Module):
         loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en).sum(dim=1)*mask_en_word.view(-1)
         #loss = loss.sum() / mask_en_word.sum() #(self.batch_size * seq_len_en)
         #if mask_en_word.sum().cpu().numpy() > 1:
-        loss = loss.sum() / (self.batch_size * self.target_vocab_size)
+        loss = loss.sum() / (self.batch_size * seq_len)
         #else:
         #    loss = loss.sum()
 
@@ -529,7 +573,7 @@ class SR_Model(nn.Module):
         #output_word_fr_fr = F.log_softmax(SRL_output_fr, dim=1)
         loss_2 = unlabeled_loss_function(output_word_fr_fr, output_word_en_fr).sum(dim=1)*mask_fr_word.view(-1)
         #if mask_fr_word.sum().cpu().numpy() > 1:
-        loss_2 = loss_2.sum() / (self.batch_size * self.target_vocab_size)
+        loss_2 = loss_2.sum() / (self.batch_size * seq_len_fr)
         #else:
         #    loss_2 = loss_2.sum()
 
