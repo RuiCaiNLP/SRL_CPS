@@ -375,7 +375,7 @@ class SR_Model(nn.Module):
             for j in range(self.target_vocab_size):
                 if j <=1:
                     continue
-                if roles_en_en[i][j]>=0 and roles_en_fr[i][j]>0:
+                if roles_en_en[i][j]>=0 and roles_en_fr[i][j]>=0:
                     mask_en[i][int(roles_en_en[i][j])] = 1
                     mask_fr[i][int(roles_en_fr[i][j])] = 1
 
@@ -419,7 +419,7 @@ class SR_Model(nn.Module):
             for j in range(self.target_vocab_size):
                 if j <=1:
                     continue
-                if roles_fr_en[i][j]>=0 and roles_fr_fr[i][j]>0:
+                if roles_fr_en[i][j]>=0 and roles_fr_fr[i][j]>=0:
                     mask_en[i][int(roles_fr_en[i][j])] = 1
                     mask_fr[i][int(roles_fr_fr[i][j])] = 1
 
