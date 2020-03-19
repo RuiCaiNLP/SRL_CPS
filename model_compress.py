@@ -482,7 +482,7 @@ class SR_Model(nn.Module):
         seq_len = flag_emb.shape[1]
         SRL_output = self.SR_Labeler(bert_emb_en, flag_emb.detach(), predicates_1D, seq_len, para=True, use_bert=True)
 
-        CopyLoss_en = self.copy_loss(SRL_output, bert_emb_en, flag_emb.detach(), seq_len)
+        CopyLoss_en = self.copy_loss(SRL_output, bert_emb_en_noise, flag_emb.detach(), seq_len)
 
         SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
         SRL_input = F.softmax(SRL_input, 2)
@@ -841,6 +841,7 @@ class SR_Model(nn.Module):
 
             bert_emb = bert_emb.detach()
         #bert_emb = self.bert_NonlinearTrans(bert_emb)
+        bert_emb_noise = gaussian(bert_emb, isTrain, 0, 0.1).detach()
 
         if lang == "En":
             pretrain_emb = self.pretrained_embedding(pretrain_batch).detach()
@@ -870,7 +871,7 @@ class SR_Model(nn.Module):
             SRL_input_probs = F.softmax(SRL_input, 2).detach()
 
             if isTrain:
-                pred_recur = self.SR_Compressor(SRL_input_probs, bert_emb.detach(),
+                pred_recur = self.SR_Compressor(SRL_input_probs, bert_emb_noise.detach(),
                                                 flag_emb.detach(), word_id_emb, predicates_1D, seq_len, para=False,
                                                 use_bert=True)
 
