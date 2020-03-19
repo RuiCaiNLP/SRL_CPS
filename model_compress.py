@@ -487,14 +487,14 @@ class SR_Model(nn.Module):
 
         SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
         SRL_input = F.softmax(SRL_input, 2)
-        pred_recur = self.SR_Compressor(SRL_input.detach(), bert_emb_en_noise,
+        pred_recur = self.SR_Compressor(SRL_input.detach(), bert_emb_en,
                                         flag_emb.detach(), None, predicates_1D, seq_len, para=True, use_bert=True)
 
         seq_len_fr = flag_emb_fr.shape[1]
         SRL_output_fr = self.SR_Labeler(bert_emb_fr, flag_emb_fr.detach(), predicates_1D_fr, seq_len_fr, para=True,
                                         use_bert=True)
 
-        CopyLoss_fr = self.copy_loss(SRL_output_fr, bert_emb_fr_noise, flag_emb_fr.detach(), seq_len_fr)
+        CopyLoss_fr = self.copy_loss(SRL_output_fr, bert_emb_fr, flag_emb_fr.detach(), seq_len_fr)
 
 
         SRL_input_fr = SRL_output_fr.view(self.batch_size, seq_len_fr, -1)
@@ -538,7 +538,7 @@ class SR_Model(nn.Module):
         score4Null = torch.zeros_like(output_word_fr_fr[:, 1:2])
         output_word_fr_fr = torch.cat((output_word_fr_fr[:, 0:1], score4Null, output_word_fr_fr[:, 1:]), 1)
 
-
+        """
         mask_en_en, mask_en_fr = self.filter_word(SRL_input, output_word_en_en,output_word_en_fr, seq_len, seq_len_fr)
         mask_en_en = get_torch_variable_from_np(mask_en_en)
         mask_en_fr = get_torch_variable_from_np(mask_en_fr)
@@ -549,8 +549,7 @@ class SR_Model(nn.Module):
 
         mask_en_word = mask_en_en + mask_fr_en - mask_en_en*mask_fr_en
         mask_fr_word = mask_en_fr + mask_fr_fr - mask_en_fr*mask_fr_fr
-
-
+        """
 
         unlabeled_loss_function = nn.KLDivLoss(reduction='none')
 
@@ -560,7 +559,7 @@ class SR_Model(nn.Module):
         #output_word_en_en = F.softmax(output_word_en_en, dim=1).detach()
         output_word_en_en = F.softmax(output_word_en_en, dim=1).detach()
         output_word_fr_en = F.log_softmax(output_word_fr_en, dim=1)
-        loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en).sum(dim=1)*mask_en_word.view(-1)
+        loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en).sum(dim=1)#*mask_en_word.view(-1)
         #loss = loss.sum() / mask_en_word.sum() #(self.batch_size * seq_len_en)
         #if mask_en_word.sum().cpu().numpy() > 1:
         loss = loss.sum() / (self.batch_size * seq_len)
@@ -571,7 +570,7 @@ class SR_Model(nn.Module):
         output_word_en_fr = F.softmax(output_word_en_fr, dim=1).detach()
         output_word_fr_fr = F.log_softmax(output_word_fr_fr, dim=1)
         #output_word_fr_fr = F.log_softmax(SRL_output_fr, dim=1)
-        loss_2 = unlabeled_loss_function(output_word_fr_fr, output_word_en_fr).sum(dim=1)*mask_fr_word.view(-1)
+        loss_2 = unlabeled_loss_function(output_word_fr_fr, output_word_en_fr).sum(dim=1)#*mask_fr_word.view(-1)
         #if mask_fr_word.sum().cpu().numpy() > 1:
         loss_2 = loss_2.sum() / (self.batch_size * seq_len_fr)
         #else:
