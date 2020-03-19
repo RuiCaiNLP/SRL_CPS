@@ -162,10 +162,10 @@ class SR_Matcher(nn.Module):
 
         self.bilstm_num_layers = model_params['bilstm_num_layers']
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
-        self.compress_word = nn.Sequential(nn.Linear(300 + 2 * self.flag_emb_size, 20), nn.Tanh())
-        self.compress_bert = nn.Sequential(nn.Linear(768 + 0 * self.flag_emb_size, 20), nn.Tanh())
+        self.compress_word = nn.Sequential(nn.Linear(300 + 2 * self.flag_emb_size, 20), nn.LeakyReLU(0.1))
+        self.compress_bert = nn.Sequential(nn.Linear(768 + 0 * self.flag_emb_size, 20), nn.LeakyReLU(0.1))
         self.scorer = nn.Sequential(nn.Linear(40, 20),
-                                    nn.Tanh(),
+                                    nn.LeakyReLU(0.1),
                                     nn.Linear(20, 1))
         self.match_word = nn.Sequential(
             nn.Linear(2 * self.bilstm_hidden_size + 300 + 2 * self.flag_emb_size, self.mlp_size),
