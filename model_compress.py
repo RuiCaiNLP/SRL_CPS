@@ -486,7 +486,7 @@ class SR_Model(nn.Module):
 
         SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
         SRL_input = F.softmax(SRL_input, 2)
-        pred_recur = self.SR_Compressor(SRL_input.detach(), bert_emb_en_noise,
+        pred_recur = self.SR_Compressor(SRL_input.detach(), bert_emb_en,
                                         flag_emb.detach(), None, predicates_1D, seq_len, para=True, use_bert=True)
 
         seq_len_fr = flag_emb_fr.shape[1]
