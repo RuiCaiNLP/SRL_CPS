@@ -841,7 +841,7 @@ class SR_Model(nn.Module):
 
             bert_emb = bert_emb.detach()
         #bert_emb = self.bert_NonlinearTrans(bert_emb)
-        bert_emb_noise = gaussian(bert_emb, isTrain, 0, 0.1).detach()
+        #bert_emb_noise = gaussian(bert_emb, isTrain, 0, 0.1).detach()
 
         if lang == "En":
             pretrain_emb = self.pretrained_embedding(pretrain_batch).detach()
