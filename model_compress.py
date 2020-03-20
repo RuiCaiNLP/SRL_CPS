@@ -482,7 +482,8 @@ class SR_Model(nn.Module):
         seq_len = flag_emb.shape[1]
         SRL_output = self.SR_Labeler(bert_emb_en, flag_emb.detach(), predicates_1D, seq_len, para=True, use_bert=True)
 
-        CopyLoss_en = self.copy_loss(SRL_output, bert_emb_en_noise, flag_emb.detach(), seq_len)
+        CopyLoss_en_noise = self.copy_loss(SRL_output, bert_emb_en_noise, flag_emb.detach(), seq_len)
+        CopyLoss_en = self.copy_loss(SRL_output, bert_emb_en, flag_emb.detach(), seq_len)
 
         SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
         SRL_input = F.softmax(SRL_input, 2)
@@ -493,7 +494,8 @@ class SR_Model(nn.Module):
         SRL_output_fr = self.SR_Labeler(bert_emb_fr, flag_emb_fr.detach(), predicates_1D_fr, seq_len_fr, para=True,
                                         use_bert=True)
 
-        CopyLoss_fr = self.copy_loss(SRL_output_fr, bert_emb_fr_noise, flag_emb_fr.detach(), seq_len_fr)
+        CopyLoss_fr_noise = self.copy_loss(SRL_output_fr, bert_emb_fr_noise, flag_emb_fr.detach(), seq_len_fr)
+        CopyLoss_fr = self.copy_loss(SRL_output_fr, bert_emb_fr, flag_emb_fr.detach(), seq_len_fr)
 
 
         SRL_input_fr = SRL_output_fr.view(self.batch_size, seq_len_fr, -1)
@@ -579,7 +581,7 @@ class SR_Model(nn.Module):
         #print(mask_fr_word.sum())
 
 
-        return loss, loss_2, CopyLoss_en, CopyLoss_fr
+        return loss, loss_2, CopyLoss_en, CopyLoss_fr, CopyLoss_en_noise, CopyLoss_fr_noise
 
     def word_trans(self, batch_input, use_bert, isTrain=True):
         unlabeled_data_en, unlabeled_data_fr = batch_input
