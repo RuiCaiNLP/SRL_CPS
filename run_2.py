@@ -407,7 +407,7 @@ if __name__ == '__main__':
                     loss, loss_2,copy_loss_en, copy_loss_fr,copy_loss_en_noise, copy_loss_fr_noise =  srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True,
                                                         self_constrain=False, use_bert=use_bert)
                     optimizer.zero_grad()
-                    (loss+loss_2+copy_loss_en+copy_loss_fr_noise).backward()
+                    (loss+loss_2+copy_loss_en_noise+copy_loss_fr_noise).backward()
 
                     optimizer.step()
                     #for param in srl_model.SR_Compressor.parameters():
