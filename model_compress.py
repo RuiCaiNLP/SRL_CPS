@@ -504,6 +504,7 @@ class SR_Model(nn.Module):
                                            flag_emb_fr.detach(), None, predicates_1D_fr, seq_len_fr, para=True,
                                            use_bert=True)
 
+
         """
         En event vector, En word
         """
