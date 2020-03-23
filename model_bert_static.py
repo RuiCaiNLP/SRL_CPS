@@ -824,6 +824,7 @@ class SR_Model(nn.Module):
         actual_lens = batch_input['seq_len']
         mask_para = get_torch_variable_from_np(batch_input['mask_para'])
         mask_copy = batch_input['mask_para']
+        mask_unk = get_torch_variable_from_np(batch_input['mask_unk'])
         # print(actual_lens)
         if use_bert:
             bert_input_ids = get_torch_variable_from_np(batch_input['bert_input_ids'])
@@ -904,7 +905,7 @@ class SR_Model(nn.Module):
             student = F.log_softmax(output_word, dim=1)
             unlabeled_loss_function = nn.KLDivLoss(reduction='none')
             loss_copy = unlabeled_loss_function(student, teacher).view(self.batch_size*seq_len,-1)*\
-                        mask_copy.view(self.batch_size*seq_len,-1)
+                        mask_copy.view(self.batch_size*seq_len,-1)*mask_unk.view(self.batch_size*seq_len,-1)
             loss_copy = loss_copy.sum() / (self.batch_size * seq_len)
 
         return SRL_output, output_word, loss_copy

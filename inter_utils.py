@@ -190,6 +190,8 @@ def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx,
 
         word_times_batch = []
         mask_duplicate_word_para = []
+        mask_unk_word = []
+        batch_id = 0
         for sentence in data_batch:
             word_dict = dict()
             word_times = []
@@ -213,8 +215,22 @@ def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx,
                     mask_para.append(0)
             mask_duplicate_word_para.append(mask_para)
 
+            word_id = 0
+            mask_unk = []
+            for item in sentence:
+                word = item[6]
+                assert word in word_dict
+                if word_batch[batch_id][word_id] == 1:
+                    mask_unk.append(0)
+                else:
+                    mask_unk.append(1)
+                word_id +=1
+            mask_unk_word.append(mask_para)
+            batch_id+=1
+
         pad_word_times_batch = np.array(pad_batch(word_times_batch, batch_size, 0))
         pad_mask_duplicate_word_para = np.array(pad_batch(mask_duplicate_word_para, batch_size, 1))
+        pad_mask_unk_word = np.array(pad_batch(mask_unk_word, batch_size, 1))
 
 
 
@@ -293,7 +309,8 @@ def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx,
             'bert_input_ids': bert_inputs_ids,
             'bert_input_mask': bert_input_mask,
             'bert_out_positions': bert_out_positions,
-            'mask_para': pad_mask_duplicate_word_para
+            'mask_para': pad_mask_duplicate_word_para,
+            'mask_unk': pad_mask_unk_word
         }
 
         yield batch

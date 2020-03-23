@@ -419,7 +419,7 @@ if __name__ == '__main__':
                               copy_loss_en_noise.item(), copy_loss_fr_noise.item())
                         #print(coverage)
                 """
-                if batch_i > 0 and batch_i % show_steps == 0:
+                if batch_i >= 0 and batch_i % show_steps == 0:
                     srl_model.eval()
                     _, pred = torch.max(out, 1)
                     pred = get_data(pred)
