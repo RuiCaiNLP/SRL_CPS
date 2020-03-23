@@ -214,7 +214,7 @@ def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx,
             mask_duplicate_word_para.append(mask_para)
 
         pad_word_times_batch = np.array(pad_batch(word_times_batch, batch_size, 0))
-        pad_mask_duplicate_word_para = np.array(pad_batch(mask_duplicate_word_para, batch_size, 0))
+        pad_mask_duplicate_word_para = np.array(pad_batch(mask_duplicate_word_para, batch_size, 1))
 
 
 
