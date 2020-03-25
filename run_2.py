@@ -1,5 +1,5 @@
 from __future__ import print_function
-import model_bert_static
+import model_bert_static_nosplit
 import data_utils
 import inter_utils
 import pickle
@@ -330,7 +330,7 @@ if __name__ == '__main__':
         }
 
         # build model
-        srl_model = model_bert_static.SR_Model(model_params)
+        srl_model = model_bert_static_nosplit.SR_Model(model_params)
 
         if USE_CUDA:
             srl_model.cuda()
