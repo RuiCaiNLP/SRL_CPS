@@ -104,45 +104,33 @@ class SR_Compressor(nn.Module):
         self.bilstm_num_layers = model_params['bilstm_num_layers']
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
 
-        self.bilstm_hidden_state_word = (
-            torch.zeros(2 * 2, self.batch_size, (self.target_vocab_size-1) * 10).to(device),
-            torch.zeros(2 * 2, self.batch_size, (self.target_vocab_size-1) * 10).to(device))
+        self.bilstm_hidden_state_probs = (
+            torch.zeros(2 * 2, self.batch_size, self.target_vocab_size).to(device),
+            torch.zeros(2 * 2, self.batch_size, self.target_vocab_size).to(device))
 
-        self.bilstm_hidden_state_bert = (
-            torch.zeros(2 * 2, self.batch_size, (self.target_vocab_size-1) * 10).to(device),
-            torch.zeros(2 * 2, self.batch_size, (self.target_vocab_size-1) * 10).to(device))
-
-        self.bilstm_layer_word = nn.LSTM(input_size=300 + self.target_vocab_size + 0 * self.flag_emb_size,
-                                         hidden_size=(self.target_vocab_size-1) * 10, num_layers=2,
+        self.bilstm_layer_probs = nn.LSTM(input_size=self.target_vocab_size,
+                                         hidden_size=self.target_vocab_size, num_layers=2,
                                          bidirectional=True,
                                          bias=True, batch_first=True)
+        self.combine_wordprobs = nn.Sequential(nn.Linear(300 + 2 * self.target_vocab_size, 20*(self.target_vocab_size-1)),
+                                               nn.LeakyReLU(0.1),
+                                               nn.Linear(20 * (self.target_vocab_size - 1),
+                                                         20 * (self.target_vocab_size - 1)),
+                                               nn.LeakyReLU(0.1))
 
-        self.bilstm_layer_bert = nn.LSTM(input_size=768 + self.target_vocab_size + 0 * self.flag_emb_size,
-                                         hidden_size=(self.target_vocab_size-1) * 10, num_layers=2,
-                                         bidirectional=True,
-                                         bias=True, batch_first=True)
+    def forward(self, SRL_input_probs, word_emb, flag_emb, word_id_emb, predicates_1D, seq_len, use_bert=False, para=False):
+        self.bilstm_hidden_state_probs = (
+            torch.zeros(2 * 2, self.batch_size, self.target_vocab_size).to(device),
+            torch.zeros(2 * 2, self.batch_size, self.target_vocab_size).to(device))
 
-    def forward(self, SRL_input, word_emb, flag_emb, word_id_emb, predicates_1D, seq_len, use_bert=False, para=False):
-        self.bilstm_hidden_state_word = (
-            torch.zeros(2 * 2, self.batch_size, (self.target_vocab_size-1) * 10).to(device),
-            torch.zeros(2 * 2, self.batch_size, (self.target_vocab_size-1) * 10).to(device))
-
-        self.bilstm_hidden_state_bert = (
-            torch.zeros(2 * 2, self.batch_size, (self.target_vocab_size-1) * 10).to(device),
-            torch.zeros(2 * 2, self.batch_size, (self.target_vocab_size-1) * 10).to(device))
-
-        SRL_input = SRL_input.view(self.batch_size, seq_len, -1)
-        if not use_bert:
-            compress_input = torch.cat((word_emb, SRL_input), 2)
-            bilstm_output_word, (_, bilstm_final_state_word) = self.bilstm_layer_word(compress_input,
-                                                                                      self.bilstm_hidden_state_word)
-            bilstm_output = bilstm_output_word.contiguous()
-        else:
-            compress_input = torch.cat((word_emb, SRL_input), 2)
-            bilstm_output_bert, (_, bilstm_final_state_bert) = self.bilstm_layer_bert(compress_input,
-                                                                                      self.bilstm_hidden_state_bert)
-            bilstm_output = bilstm_output_bert.contiguous()
-        pred_recur = torch.max(bilstm_output, dim=1)[0]
+        SRL_input_probs = SRL_input_probs.view(self.batch_size, seq_len, -1)
+        bilstm_output_probs, (_, bilstm_final_state_probs) = self.bilstm_layer_probs(SRL_input_probs,
+                                                             self.bilstm_hidden_state_probs)
+        # BT 2R
+        bilstm_output = bilstm_output_probs.contiguous()
+        word_probs = torch.cat((bilstm_output, word_emb), 2)
+        converted_wordprobs = self.combine_wordprobs(word_probs)
+        pred_recur = torch.max(converted_wordprobs, dim=1)[0]
         return pred_recur
 
 
@@ -188,14 +176,14 @@ class SR_Matcher(nn.Module):
         #backward_hidden = pred_recur[:, (self.target_vocab_size-1) * 10:].view(self.batch_size, (self.target_vocab_size-1),
         #                                                                   10)
         #role_hidden = torch.cat((forward_hidden, backward_hidden), 2)
-        role_hidden = self.hidden2compression(pred_recur).view(self.batch_size, (self.target_vocab_size-1),20)
+        role_hidden = pred_recur.view(self.batch_size, (self.target_vocab_size-1),20)
         role_hidden = role_hidden.unsqueeze(1).expand(self.batch_size, seq_len, (self.target_vocab_size-1), 20)
         #if copy:
         #    pretrained_emb = self.dropout_word_1(pretrained_emb)
-        if use_bert:
-            combine = self.compress_bert(pretrained_emb)
-        else:
-            combine = self.compress_word(pretrained_emb)
+        #if use_bert:
+        #    combine = self.compress_bert(pretrained_emb)
+        #else:
+        combine = self.compress_word(pretrained_emb)
         combine = combine.unsqueeze(2).expand(self.batch_size, seq_len, self.target_vocab_size-1, 20)
         scores = self.scorer(torch.cat((role_hidden, combine), 3)).view(self.batch_size * seq_len,
                                                                         (self.target_vocab_size - 1))
