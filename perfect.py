@@ -323,6 +323,27 @@ class SR_Model(nn.Module):
         loss = loss.sum() / (self.batch_size * seq_len)
         return loss
 
+
+    def learn_loss(self, output_SRL, pretrain_emb, flag_emb, seq_len):
+        SRL_input = output_SRL.view(self.batch_size, seq_len, -1)
+        output = SRL_input.view(self.batch_size*seq_len, -1)
+        SRL_input = F.softmax(SRL_input, 2).detach()
+        pred_recur = self.SR_Compressor(SRL_input, pretrain_emb,
+                                        flag_emb.detach(), None, None, seq_len, para=False, use_bert=True)
+
+        output_word = self.SR_Matcher(pred_recur, pretrain_emb, flag_emb.detach(), None, seq_len, copy = True,
+                                      para=False, use_bert=True)
+
+        score4Null = torch.zeros_like(output_word[:, 1:2])
+        output_word = torch.cat((output_word[:, 0:1], score4Null, output_word[:, 1:]), 1)
+
+        criterion = nn.CrossEntropyLoss()
+        _, prediction_batch_variable = torch.max(output, 1)
+        loss_word = criterion(output_word, prediction_batch_variable)
+
+        return loss_word
+
+
     def filter_word(self, SRL_pred, SRL_out_en_en, SRL_out_en_fr, seq_len, seq_len_fr):
         SRL_pred = SRL_pred.view(self.batch_size, seq_len, self.target_vocab_size)
         SRL_out_en_en = SRL_out_en_en.view(self.batch_size, seq_len, self.target_vocab_size)
@@ -431,67 +452,74 @@ class SR_Model(nn.Module):
         seq_len = flag_emb.shape[1]
         seq_len_en = seq_len
 
-        if use_bert:
-            bert_input_ids_fr = get_torch_variable_from_np(unlabeled_data_fr['bert_input_ids'])
-            bert_input_mask_fr = get_torch_variable_from_np(unlabeled_data_fr['bert_input_mask'])
-            bert_out_positions_fr = get_torch_variable_from_np(unlabeled_data_fr['bert_out_positions'])
+        pretrain_batch_en = get_torch_variable_from_np(unlabeled_data_en['pretrain'])
+        pretrain_emb_en = self.pretrained_embedding(pretrain_batch_en).detach()
 
-            bert_emb_fr = self.model(bert_input_ids_fr, attention_mask=bert_input_mask_fr)
-            bert_emb_fr = bert_emb_fr[0]
-            bert_emb_fr = bert_emb_fr[:, 1:-1, :].contiguous().detach()
-            bert_emb_fr = bert_emb_fr[torch.arange(bert_emb_fr.size(0)).unsqueeze(-1), bert_out_positions_fr].detach()
+        pretrain_batch_fr = get_torch_variable_from_np(unlabeled_data_fr['pretrain'])
+        pretrain_emb_fr = self.pretrained_embedding(pretrain_batch_fr).detach()
 
-            for i in range(len(bert_emb_fr)):
-                if i >= len(actual_lens_fr):
-                    print("error")
-                    break
-                for j in range(len(bert_emb_fr[i])):
-                    if j >= actual_lens_fr[i]:
-                        bert_emb_fr[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
-            bert_emb_fr_noise = gaussian(bert_emb_fr, isTrain, 0, 0.1).detach()
-            bert_emb_fr = bert_emb_fr.detach()
+        bert_input_ids_fr = get_torch_variable_from_np(unlabeled_data_fr['bert_input_ids'])
+        bert_input_mask_fr = get_torch_variable_from_np(unlabeled_data_fr['bert_input_mask'])
+        bert_out_positions_fr = get_torch_variable_from_np(unlabeled_data_fr['bert_out_positions'])
 
-            bert_input_ids_en = get_torch_variable_from_np(unlabeled_data_en['bert_input_ids'])
-            bert_input_mask_en = get_torch_variable_from_np(unlabeled_data_en['bert_input_mask'])
-            bert_out_positions_en = get_torch_variable_from_np(unlabeled_data_en['bert_out_positions'])
+        bert_emb_fr = self.model(bert_input_ids_fr, attention_mask=bert_input_mask_fr)
+        bert_emb_fr = bert_emb_fr[0]
+        bert_emb_fr = bert_emb_fr[:, 1:-1, :].contiguous().detach()
+        bert_emb_fr = bert_emb_fr[torch.arange(bert_emb_fr.size(0)).unsqueeze(-1), bert_out_positions_fr].detach()
 
-            bert_emb_en = self.model(bert_input_ids_en, attention_mask=bert_input_mask_en)
-            bert_emb_en = bert_emb_en[0]
-            bert_emb_en = bert_emb_en[:, 1:-1, :].contiguous().detach()
-            bert_emb_en = bert_emb_en[torch.arange(bert_emb_en.size(0)).unsqueeze(-1), bert_out_positions_en].detach()
+        for i in range(len(bert_emb_fr)):
+            if i >= len(actual_lens_fr):
+                print("error")
+                break
+            for j in range(len(bert_emb_fr[i])):
+                if j >= actual_lens_fr[i]:
+                    bert_emb_fr[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
+        bert_emb_fr_noise = gaussian(bert_emb_fr, isTrain, 0, 0.1).detach()
+        bert_emb_fr = bert_emb_fr.detach()
 
-            for i in range(len(bert_emb_en)):
-                if i >= len(actual_lens_en):
-                    print("error")
-                    break
-                for j in range(len(bert_emb_en[i])):
-                    if j >= actual_lens_en[i]:
-                        bert_emb_en[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
-            bert_emb_en_noise = gaussian(bert_emb_en, isTrain, 0, 0.1).detach()
-            bert_emb_en = bert_emb_en.detach()
+        bert_input_ids_en = get_torch_variable_from_np(unlabeled_data_en['bert_input_ids'])
+        bert_input_mask_en = get_torch_variable_from_np(unlabeled_data_en['bert_input_mask'])
+        bert_out_positions_en = get_torch_variable_from_np(unlabeled_data_en['bert_out_positions'])
+
+        bert_emb_en = self.model(bert_input_ids_en, attention_mask=bert_input_mask_en)
+        bert_emb_en = bert_emb_en[0]
+        bert_emb_en = bert_emb_en[:, 1:-1, :].contiguous().detach()
+        bert_emb_en = bert_emb_en[torch.arange(bert_emb_en.size(0)).unsqueeze(-1), bert_out_positions_en].detach()
+
+        for i in range(len(bert_emb_en)):
+            if i >= len(actual_lens_en):
+                print("error")
+                break
+            for j in range(len(bert_emb_en[i])):
+                if j >= actual_lens_en[i]:
+                    bert_emb_en[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
+        bert_emb_en_noise = gaussian(bert_emb_en, isTrain, 0, 0.1).detach()
+        bert_emb_en = bert_emb_en.detach()
+
+
 
         seq_len = flag_emb.shape[1]
         SRL_output = self.SR_Labeler(bert_emb_en, flag_emb.detach(), predicates_1D, seq_len, para=True, use_bert=True)
 
-        CopyLoss_en_noise = self.copy_loss(SRL_output, bert_emb_en_noise, flag_emb.detach(), seq_len)
-        CopyLoss_en = self.copy_loss(SRL_output, bert_emb_en, flag_emb.detach(), seq_len)
+        #CopyLoss_en_noise = self.copy_loss(SRL_output, bert_emb_en_noise, flag_emb.detach(), seq_len)
+        CopyLoss_en = self.learn_loss(SRL_output, pretrain_emb_en, flag_emb.detach(), seq_len)
 
         SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
         SRL_input = F.softmax(SRL_input, 2)
-        pred_recur = self.SR_Compressor(SRL_input.detach(), bert_emb_en,
+        pred_recur = self.SR_Compressor(SRL_input.detach(), pretrain_emb_en,
                                         flag_emb.detach(), None, predicates_1D, seq_len, para=True, use_bert=True)
 
         seq_len_fr = flag_emb_fr.shape[1]
         SRL_output_fr = self.SR_Labeler(bert_emb_fr, flag_emb_fr.detach(), predicates_1D_fr, seq_len_fr, para=True,
                                         use_bert=True)
 
-        CopyLoss_fr_noise = self.copy_loss(SRL_output_fr, bert_emb_fr_noise, flag_emb_fr.detach(), seq_len_fr)
-        CopyLoss_fr = self.copy_loss(SRL_output_fr, bert_emb_fr, flag_emb_fr.detach(), seq_len_fr)
+        #CopyLoss_fr_noise = self.copy_loss(SRL_output_fr, bert_emb_fr_noise, flag_emb_fr.detach(), seq_len_fr)
+        CopyLoss_fr = self.learn_loss(SRL_output_fr, pretrain_emb_fr, flag_emb_fr.detach(), seq_len_fr)
 
 
         SRL_input_fr = SRL_output_fr.view(self.batch_size, seq_len_fr, -1)
         SRL_input_fr = F.softmax(SRL_input_fr, 2)
-        pred_recur_fr = self.SR_Compressor(SRL_input_fr, bert_emb_fr,
+        pred_recur_fr = self.SR_Compressor(SRL_input_fr, pretrain_emb_fr,
                                            flag_emb_fr.detach(), None, predicates_1D_fr, seq_len_fr, para=True,
                                            use_bert=True)
 
@@ -499,7 +527,7 @@ class SR_Model(nn.Module):
         """
         En event vector, En word
         """
-        output_word_en_en = self.SR_Matcher(pred_recur.detach(), bert_emb_en, flag_emb.detach(), None, seq_len,
+        output_word_en_en = self.SR_Matcher(pred_recur.detach(), pretrain_emb_en, flag_emb.detach(), None, seq_len,
                                             para=True, use_bert=True).detach()
         score4Null = torch.zeros_like(output_word_en_en[:, 1:2])
         output_word_en_en = torch.cat((output_word_en_en[:, 0:1], score4Null, output_word_en_en[:, 1:]), 1)
@@ -508,7 +536,7 @@ class SR_Model(nn.Module):
         """
         Fr event vector, En word
         """
-        output_word_fr_en = self.SR_Matcher(pred_recur_fr, bert_emb_en, flag_emb.detach(), None, seq_len,
+        output_word_fr_en = self.SR_Matcher(pred_recur_fr, pretrain_emb_en, flag_emb.detach(), None, seq_len,
                                             para=True, use_bert=True)
         score4Null = torch.zeros_like(output_word_fr_en[:, 1:2])
         output_word_fr_en = torch.cat((output_word_fr_en[:, 0:1], score4Null, output_word_fr_en[:, 1:]), 1)
@@ -517,7 +545,7 @@ class SR_Model(nn.Module):
         """
         En event vector, Fr word
         """
-        output_word_en_fr = self.SR_Matcher(pred_recur.detach(), bert_emb_fr, flag_emb_fr.detach(), None, seq_len_fr,
+        output_word_en_fr = self.SR_Matcher(pred_recur.detach(), pretrain_emb_fr, flag_emb_fr.detach(), None, seq_len_fr,
                                             para=True, use_bert=True).detach()
         score4Null = torch.zeros_like(output_word_en_fr[:, 1:2])
         output_word_en_fr = torch.cat((output_word_en_fr[:, 0:1], score4Null, output_word_en_fr[:, 1:]), 1)
@@ -526,7 +554,7 @@ class SR_Model(nn.Module):
         Fr event vector, Fr word
          """
 
-        output_word_fr_fr = self.SR_Matcher(pred_recur_fr, bert_emb_fr, flag_emb_fr.detach(), None, seq_len_fr,
+        output_word_fr_fr = self.SR_Matcher(pred_recur_fr, pretrain_emb_fr, flag_emb_fr.detach(), None, seq_len_fr,
                                             para=True, use_bert=True)
         score4Null = torch.zeros_like(output_word_fr_fr[:, 1:2])
         output_word_fr_fr = torch.cat((output_word_fr_fr[:, 0:1], score4Null, output_word_fr_fr[:, 1:]), 1)
@@ -551,7 +579,7 @@ class SR_Model(nn.Module):
         #output_word_en_en = F.softmax(output_word_en_en, dim=1).detach()
         output_word_en_en = F.softmax(output_word_en_en, dim=1).detach()
         output_word_fr_en = F.log_softmax(output_word_fr_en, dim=1)
-        loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en).sum(dim=1)*mask_en_word.view(-1)
+        loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en).sum(dim=1)#*mask_en_word.view(-1)
         #loss = loss.sum() / mask_en_word.sum() #(self.batch_size * seq_len_en)
         #if mask_en_word.sum().cpu().numpy() > 1:
         loss = loss.sum() / (self.batch_size * seq_len)
@@ -562,7 +590,7 @@ class SR_Model(nn.Module):
         output_word_en_fr = F.softmax(output_word_en_fr, dim=1).detach()
         output_word_fr_fr = F.log_softmax(output_word_fr_fr, dim=1)
         #output_word_fr_fr = F.log_softmax(SRL_output_fr, dim=1)
-        loss_2 = unlabeled_loss_function(output_word_fr_fr, output_word_en_fr).sum(dim=1)*mask_fr_word.view(-1)
+        loss_2 = unlabeled_loss_function(output_word_fr_fr, output_word_en_fr).sum(dim=1)#*mask_fr_word.view(-1)
         #if mask_fr_word.sum().cpu().numpy() > 1:
         loss_2 = loss_2.sum() / (self.batch_size * seq_len_fr)
         #else:
@@ -572,7 +600,7 @@ class SR_Model(nn.Module):
         #print(mask_fr_word.sum())
 
 
-        return loss, loss_2, CopyLoss_en, CopyLoss_fr, CopyLoss_en_noise, CopyLoss_fr_noise
+        return loss, loss_2, CopyLoss_en, CopyLoss_fr
 
     def word_trans(self, batch_input, use_bert, isTrain=True):
         unlabeled_data_en, unlabeled_data_fr = batch_input
@@ -799,10 +827,9 @@ class SR_Model(nn.Module):
 
     def forward(self, batch_input, lang='En', unlabeled=False, self_constrain=False, use_bert=False, isTrain=False):
         if unlabeled:
-            loss, loss_2, copy_loss_en, copy_loss_fr, CopyLoss_en_noise, CopyLoss_fr_noise\
-                = self.parallel_train_(batch_input, use_bert)
+            loss, loss_2, copy_loss_en, copy_loss_fr = self.parallel_train_(batch_input, use_bert)
 
-            return loss, loss_2, copy_loss_en, copy_loss_fr, CopyLoss_en_noise, CopyLoss_fr_noise
+            return loss, loss_2, copy_loss_en, copy_loss_fr
             #l2loss = self.word_trans(batch_input, use_bert)
             #return l2loss
 
