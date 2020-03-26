@@ -374,11 +374,11 @@ if __name__ == '__main__':
                 out, output_word, learn_loss = srl_model(train_input_data, lang='En', use_bert=use_bert, isTrain=True)
                 _,  prediction_batch_variable = torch.max(out, 1)
                 loss = criterion(out, target_batch_variable)
-                loss_word = criterion(output_word, prediction_batch_variable)
+                #loss_word = criterion(output_word, prediction_batch_variable)
                 if batch_i % 50 == 0:
-                    print("epoch:", epoch, batch_i, loss.item(), loss_word.item())
+                    print("epoch:", epoch, batch_i, loss.item(), learn_loss.item())
                 optimizer.zero_grad()
-                (loss + loss_word).backward()
+                (loss + learn_loss).backward()
                 optimizer.step()
                 sys.stdout.flush()
 
@@ -419,7 +419,7 @@ if __name__ == '__main__':
                         print('trans loss', loss.item(), loss_2.item(), copy_loss_en.item(), copy_loss_fr.item())
                         #print(coverage)
 
-                if batch_i >= 0 and batch_i % show_steps == 0:
+                if batch_i > 0 and batch_i % show_steps == 0:
                     srl_model.eval()
                     _, pred = torch.max(out, 1)
                     pred = get_data(pred)

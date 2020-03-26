@@ -324,10 +324,19 @@ class SR_Model(nn.Module):
         return loss
 
 
-    def learn_loss(self, output_SRL, pretrain_emb, flag_emb, seq_len):
+    def learn_loss(self, output_SRL, pretrain_emb, flag_emb, seq_len, mask_copy, mask_unk):
         SRL_input = output_SRL.view(self.batch_size, seq_len, -1)
         output = SRL_input.view(self.batch_size*seq_len, -1)
         SRL_input = F.softmax(SRL_input, 2).detach()
+
+        pred = torch.max(SRL_input, dim=2)[1]
+        for i in range(self.batch_size):
+            for j in range(seq_len):
+                if pred[i][j] > 1:
+                    mask_copy[i][j] = 1
+
+        mask_copy = get_torch_variable_from_np(mask_copy)
+        mask_final = mask_copy.view(self.batch_size * seq_len) * mask_unk.view(self.batch_size * seq_len)
         pred_recur = self.SR_Compressor(SRL_input, pretrain_emb,
                                         flag_emb.detach(), None, None, seq_len, para=False, use_bert=True)
 
@@ -337,9 +346,13 @@ class SR_Model(nn.Module):
         score4Null = torch.zeros_like(output_word[:, 1:2])
         output_word = torch.cat((output_word[:, 0:1], score4Null, output_word[:, 1:]), 1)
 
-        criterion = nn.CrossEntropyLoss()
+        criterion = nn.CrossEntropyLoss(reduction='none')
         _, prediction_batch_variable = torch.max(output, 1)
-        loss_word = criterion(output_word, prediction_batch_variable)
+
+        loss_word = criterion(output_word, prediction_batch_variable)*mask_final
+
+        loss_word = loss_word.sum()/(self.batch_size*seq_len)
+
 
         return loss_word
 
@@ -496,13 +509,22 @@ class SR_Model(nn.Module):
         bert_emb_en_noise = gaussian(bert_emb_en, isTrain, 0, 0.1).detach()
         bert_emb_en = bert_emb_en.detach()
 
+        mask_para_en = get_torch_variable_from_np(unlabeled_data_en['mask_para'])
+        mask_copy_en = unlabeled_data_en['mask_para']
+        mask_unk_en = get_torch_variable_from_np(unlabeled_data_en['mask_unk'])
+        mask_final_en = mask_para_en.view(self.batch_size * seq_len) * mask_unk_en.view(self.batch_size * seq_len)
 
+        seq_len_fr = flag_emb_fr.shape[1]
+        mask_para_fr = get_torch_variable_from_np(unlabeled_data_fr['mask_para'])
+        mask_copy_fr = unlabeled_data_fr['mask_para']
+        mask_unk_fr = get_torch_variable_from_np(unlabeled_data_fr['mask_unk'])
+        mask_final_fr = mask_para_fr.view(self.batch_size * seq_len_fr) * mask_unk_fr.view(self.batch_size * seq_len_fr)
 
         seq_len = flag_emb.shape[1]
         SRL_output = self.SR_Labeler(bert_emb_en, flag_emb.detach(), predicates_1D, seq_len, para=True, use_bert=True)
 
         #CopyLoss_en_noise = self.copy_loss(SRL_output, bert_emb_en_noise, flag_emb.detach(), seq_len)
-        CopyLoss_en = self.learn_loss(SRL_output, pretrain_emb_en, flag_emb.detach(), seq_len)
+        CopyLoss_en = self.learn_loss(SRL_output, pretrain_emb_en, flag_emb.detach(), seq_len, mask_copy_en, mask_unk_en)
 
         SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
         SRL_input = F.softmax(SRL_input, 2)
@@ -514,7 +536,7 @@ class SR_Model(nn.Module):
                                         use_bert=True)
 
         #CopyLoss_fr_noise = self.copy_loss(SRL_output_fr, bert_emb_fr_noise, flag_emb_fr.detach(), seq_len_fr)
-        CopyLoss_fr = self.learn_loss(SRL_output_fr, pretrain_emb_fr, flag_emb_fr.detach(), seq_len_fr)
+        CopyLoss_fr = self.learn_loss(SRL_output_fr, pretrain_emb_fr, flag_emb_fr.detach(), seq_len_fr,mask_copy_fr, mask_unk_fr)
 
 
         SRL_input_fr = SRL_output_fr.view(self.batch_size, seq_len_fr, -1)
@@ -579,7 +601,7 @@ class SR_Model(nn.Module):
         #output_word_en_en = F.softmax(output_word_en_en, dim=1).detach()
         output_word_en_en = F.softmax(output_word_en_en, dim=1).detach()
         output_word_fr_en = F.log_softmax(output_word_fr_en, dim=1)
-        loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en).sum(dim=1)#*mask_en_word.view(-1)
+        loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en).sum(dim=1)*mask_final_en
         #loss = loss.sum() / mask_en_word.sum() #(self.batch_size * seq_len_en)
         #if mask_en_word.sum().cpu().numpy() > 1:
         loss = loss.sum() / (self.batch_size * seq_len)
@@ -590,7 +612,7 @@ class SR_Model(nn.Module):
         output_word_en_fr = F.softmax(output_word_en_fr, dim=1).detach()
         output_word_fr_fr = F.log_softmax(output_word_fr_fr, dim=1)
         #output_word_fr_fr = F.log_softmax(SRL_output_fr, dim=1)
-        loss_2 = unlabeled_loss_function(output_word_fr_fr, output_word_en_fr).sum(dim=1)#*mask_fr_word.view(-1)
+        loss_2 = unlabeled_loss_function(output_word_fr_fr, output_word_en_fr).sum(dim=1)*mask_final_fr
         #if mask_fr_word.sum().cpu().numpy() > 1:
         loss_2 = loss_2.sum() / (self.batch_size * seq_len_fr)
         #else:
@@ -894,13 +916,7 @@ class SR_Model(nn.Module):
             SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
             SRL_input_probs = F.softmax(SRL_input, 2).detach()
 
-            pred = torch.max(SRL_input_probs, dim=2)[1]
-            for i in range(self.batch_size):
-                for j in range(seq_len):
-                    if pred[i][j]>1:
-                        mask_copy[i][j] =1
 
-            mask_copy = get_torch_variable_from_np(mask_copy)
             if isTrain:
                 pred_recur = self.SR_Compressor(SRL_input_probs, pretrain_emb.detach(),
                                                 flag_emb.detach(), word_id_emb, predicates_1D, seq_len, para=False,
@@ -918,15 +934,19 @@ class SR_Model(nn.Module):
 
             score4Null = torch.zeros_like(output_word[:, 1:2])
             output_word = torch.cat((output_word[:, 0:1], score4Null, output_word[:, 1:]), 1)
-
+            """
             teacher = F.softmax(SRL_input.view(self.batch_size * seq_len, -1), dim=1).detach()
             student = F.log_softmax(output_word, dim=1)
             unlabeled_loss_function = nn.KLDivLoss(reduction='none')
             mask_final = mask_copy.view(self.batch_size*seq_len,-1)*mask_unk.view(self.batch_size*seq_len,-1)
             loss_copy = unlabeled_loss_function(student, teacher).view(self.batch_size*seq_len,-1)*mask_final
             loss_copy = loss_copy.sum() / mask_final.sum()
+            """
+            CopyLoss = self.learn_loss(SRL_output, pretrain_emb, flag_emb.detach(), seq_len, mask_copy,
+                                          mask_unk)
 
-        return SRL_output, output_word, loss_copy
+
+        return SRL_output, output_word, CopyLoss
 
 
 
