@@ -706,7 +706,7 @@ class SR_Model(nn.Module):
             return loss
 
 
-    def parallel_train(self, batch_input, use_bert, isTrain=True):
+    def parallel_train_(self, batch_input, use_bert, isTrain=True):
         unlabeled_data_en, unlabeled_data_fr = batch_input
 
         predicates_1D_fr = unlabeled_data_fr['predicates_idx']
@@ -739,7 +739,7 @@ class SR_Model(nn.Module):
                 for j in range(len(bert_emb_fr[i])):
                     if j >= actual_lens_fr[i]:
                         bert_emb_fr[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
-            # bert_emb_fr = gaussian(bert_emb_fr, isTrain, 0, 0.1)
+            bert_emb_fr_noise = gaussian(bert_emb_fr, isTrain, 0, 0.1).detach()
             bert_emb_fr = bert_emb_fr.detach()
 
             bert_input_ids_en = get_torch_variable_from_np(unlabeled_data_en['bert_input_ids'])
@@ -748,7 +748,7 @@ class SR_Model(nn.Module):
 
             bert_emb_en = self.model(bert_input_ids_en, attention_mask=bert_input_mask_en)
             bert_emb_en = bert_emb_en[0]
-            # bert_emb_en = bert_emb_en[:, 1:-1, :].contiguous().detach()
+            bert_emb_en = bert_emb_en[:, 1:-1, :].contiguous().detach()
             bert_emb_en = bert_emb_en[torch.arange(bert_emb_en.size(0)).unsqueeze(-1), bert_out_positions_en].detach()
 
             for i in range(len(bert_emb_en)):
@@ -758,13 +758,17 @@ class SR_Model(nn.Module):
                 for j in range(len(bert_emb_en[i])):
                     if j >= actual_lens_en[i]:
                         bert_emb_en[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
-            # bert_emb_en = gaussian(bert_emb_en, isTrain, 0, 0.1)
+            bert_emb_en_noise = gaussian(bert_emb_en, isTrain, 0, 0.1).detach()
             bert_emb_en = bert_emb_en.detach()
 
         seq_len = flag_emb.shape[1]
         SRL_output = self.SR_Labeler(bert_emb_en, flag_emb.detach(), predicates_1D, seq_len, para=True, use_bert=True)
 
+        CopyLoss_en_noise = self.copy_loss(SRL_output, bert_emb_en_noise, flag_emb.detach(), seq_len)
+        CopyLoss_en = self.copy_loss(SRL_output, bert_emb_en, flag_emb.detach(), seq_len)
+
         SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
+        SRL_input = F.softmax(SRL_input, 2)
         pred_recur = self.SR_Compressor(SRL_input.detach(), bert_emb_en,
                                         flag_emb.detach(), None, predicates_1D, seq_len, para=True, use_bert=True)
 
@@ -772,21 +776,24 @@ class SR_Model(nn.Module):
         SRL_output_fr = self.SR_Labeler(bert_emb_fr, flag_emb_fr.detach(), predicates_1D_fr, seq_len_fr, para=True,
                                         use_bert=True)
 
+        CopyLoss_fr_noise = self.copy_loss(SRL_output_fr, bert_emb_fr_noise, flag_emb_fr.detach(), seq_len_fr)
+        CopyLoss_fr = self.copy_loss(SRL_output_fr, bert_emb_fr, flag_emb_fr.detach(), seq_len_fr)
+
+
         SRL_input_fr = SRL_output_fr.view(self.batch_size, seq_len_fr, -1)
+        SRL_input_fr = F.softmax(SRL_input_fr, 2)
         pred_recur_fr = self.SR_Compressor(SRL_input_fr, bert_emb_fr,
                                            flag_emb_fr.detach(), None, predicates_1D_fr, seq_len_fr, para=True,
                                            use_bert=True)
+
 
         """
         En event vector, En word
         """
         output_word_en_en = self.SR_Matcher(pred_recur.detach(), bert_emb_en, flag_emb.detach(), None, seq_len,
-                                            para=True, use_bert=True)
-        output_word_en_en = F.softmax(output_word_en_en, dim=1).detach()
-
+                                            para=True, use_bert=True).detach()
         score4Null = torch.zeros_like(output_word_en_en[:, 1:2])
         output_word_en_en = torch.cat((output_word_en_en[:, 0:1], score4Null, output_word_en_en[:, 1:]), 1)
-
 
         #############################################
         """
@@ -794,8 +801,6 @@ class SR_Model(nn.Module):
         """
         output_word_fr_en = self.SR_Matcher(pred_recur_fr, bert_emb_en, flag_emb.detach(), None, seq_len,
                                             para=True, use_bert=True)
-        output_word_fr_en = F.softmax(output_word_fr_en, dim=1)
-
         score4Null = torch.zeros_like(output_word_fr_en[:, 1:2])
         output_word_fr_en = torch.cat((output_word_fr_en[:, 0:1], score4Null, output_word_fr_en[:, 1:]), 1)
 
@@ -804,9 +809,7 @@ class SR_Model(nn.Module):
         En event vector, Fr word
         """
         output_word_en_fr = self.SR_Matcher(pred_recur.detach(), bert_emb_fr, flag_emb_fr.detach(), None, seq_len_fr,
-                                            para=True, use_bert=True)
-        output_word_en_fr = F.softmax(output_word_en_fr, dim=1).detach()
-
+                                            para=True, use_bert=True).detach()
         score4Null = torch.zeros_like(output_word_en_fr[:, 1:2])
         output_word_en_fr = torch.cat((output_word_en_fr[:, 0:1], score4Null, output_word_en_fr[:, 1:]), 1)
 
@@ -815,43 +818,59 @@ class SR_Model(nn.Module):
         """
         output_word_fr_fr = self.SR_Matcher(pred_recur_fr, bert_emb_fr, flag_emb_fr.detach(), None, seq_len_fr,
                                             para=True, use_bert=True)
-        output_word_fr_fr = F.softmax(output_word_fr_fr, dim=1)
-
         score4Null = torch.zeros_like(output_word_fr_fr[:, 1:2])
         output_word_fr_fr = torch.cat((output_word_fr_fr[:, 0:1], score4Null, output_word_fr_fr[:, 1:]), 1)
 
-        ## B*T R 2
-        # Union_enfr_fr = torch.cat((output_word_en_fr.view(-1, self.target_vocab_size, 1),
-        #                           output_word_fr_fr.view(-1, self.target_vocab_size, 1)), 2)
-        ## B*T R
-        # max_enfr_fr = torch.max(output_word_fr_fr, output_word_en_fr).detach()
-        # max_enfr_fr[:, :2] = output_word_fr_fr[:,:2].detach()
+
+        """
+        mask_en_en, mask_en_fr = self.filter_word(SRL_input, output_word_en_en,output_word_en_fr, seq_len, seq_len_fr)
+        mask_en_en = get_torch_variable_from_np(mask_en_en)
+        mask_en_fr = get_torch_variable_from_np(mask_en_fr)
+
+        mask_fr_en, mask_fr_fr = self.filter_word_fr(output_word_fr_en, output_word_fr_fr, seq_len, seq_len_fr)
+        mask_fr_en = get_torch_variable_from_np(mask_fr_en)
+        mask_fr_fr = get_torch_variable_from_np(mask_fr_fr)
+
+        mask_en_word = mask_en_en + mask_fr_en - mask_en_en*mask_fr_en
+        mask_fr_word = mask_en_fr + mask_fr_fr - mask_en_fr*mask_fr_fr
+        """
+
+        unlabeled_loss_function = nn.KLDivLoss(reduction='none')
+
+        # output_word_en_en = F.softmax(output_word_en_en, dim=1).detach()
+        # output_word_fr_en = F.log_softmax(output_word_fr_en, dim=1)
+        # loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en)
+        #output_word_en_en = F.softmax(output_word_en_en, dim=1).detach()
+        output_word_en_en = F.softmax(output_word_en_en, dim=1).detach()
+        output_word_fr_en = F.log_softmax(output_word_fr_en, dim=1)
+        loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en).sum(dim=1)#*mask_en_word.view(-1)
+        #loss = loss.sum() / mask_en_word.sum() #(self.batch_size * seq_len_en)
+        #if mask_en_word.sum().cpu().numpy() > 1:
+        loss = loss.sum() / (self.batch_size * seq_len)
+        #else:
+        #    loss = loss.sum()
+
+        # output_word_en_fr = F.softmax(output_word_en_fr, dim=1).detach()
+        output_word_en_fr = F.softmax(output_word_en_fr, dim=1).detach()
+        output_word_fr_fr = F.log_softmax(output_word_fr_fr, dim=1)
+        #output_word_fr_fr = F.log_softmax(SRL_output_fr, dim=1)
+        loss_2 = unlabeled_loss_function(output_word_fr_fr, output_word_en_fr).sum(dim=1)#*mask_fr_word.view(-1)
+        #if mask_fr_word.sum().cpu().numpy() > 1:
+        loss_2 = loss_2.sum() / (self.batch_size * seq_len_fr)
+        #else:
+        #    loss_2 = loss_2.sum()
+
+        #print(mask_en_word.sum())
+        #print(mask_fr_word.sum())
 
 
-        unlabeled_loss_function = nn.L1Loss(reduction='none')
-        loss = unlabeled_loss_function(output_word_fr_en[:, 1], output_word_en_en[:, 1])
-        theta = torch.gt(output_word_en_en[:, 1], output_en_en_nonNull_max)
-        loss = theta * loss
-        if torch.gt(theta.sum(), 0):
-            loss = loss.sum() / theta.sum()
-        else:
-            loss = loss.sum()
-
-        loss_2 = unlabeled_loss_function(output_word_fr_fr_nonNull_maxarg.view(-1), output_en_fr_nonNull_max)
-        theta = torch.gt(output_en_fr_nonNull_max, output_word_en_fr[:, 1])
-        loss_2 = theta * loss_2
-        if torch.gt(theta.sum(), 0):
-            loss_2 = loss_2.sum() / theta.sum()
-        else:
-            loss_2 = loss_2.sum()
-
-        return loss, loss_2
+        return loss, loss_2, CopyLoss_en, CopyLoss_fr, CopyLoss_en_noise, CopyLoss_fr_noise
 
     def forward(self, batch_input, lang='En', unlabeled=False, self_constrain=False, use_bert=False, isTrain=False):
         if unlabeled:
-            loss, loss_2, copy_loss_en, copy_loss_fr = self.parallel_train_(batch_input, use_bert)
+            loss, loss_2, copy_loss_en, copy_loss_fr,a,b = self.parallel_train_(batch_input, use_bert)
 
-            return loss, loss_2, copy_loss_en, copy_loss_fr
+            return loss, loss_2, copy_loss_en, copy_loss_fr, a, b
             #l2loss = self.word_trans(batch_input, use_bert)
             #return l2loss
 

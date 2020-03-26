@@ -384,7 +384,7 @@ if __name__ == '__main__':
 
 
                 #batch_size=1
-                """
+
                 try:
                     unlabeled_data_en = next(unlabeled_Generator_En)
                     unlabeled_data_fr = next(unlabeled_Generator_Fr)
@@ -405,10 +405,10 @@ if __name__ == '__main__':
                     #for param in srl_model.SR_Compressor.parameters():
                     #    param.requires_grad = False
 
-                    loss, loss_2,copy_loss_en, copy_loss_fr =  srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True,
+                    loss, loss_2,copy_loss_en, copy_loss_fr,copy_loss_en_noise, copy_loss_fr_noise =  srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True,
                                                         self_constrain=False, use_bert=use_bert)
                     optimizer.zero_grad()
-                    (loss+loss_2+copy_loss_en+copy_loss_fr).backward()
+                    (loss+loss_2+copy_loss_en+copy_loss_fr_noise).backward()
 
                     optimizer.step()
                     #for param in srl_model.SR_Compressor.parameters():
@@ -416,9 +416,10 @@ if __name__ == '__main__':
 
                     if batch_i % 50 == 0:
                         #print("para loss:", batch_i, loss.item(), loss_2.item(), copy_loss.item(), copy_loss_fr.item())
-                        print('trans loss', loss.item(), loss_2.item(), copy_loss_en.item(), copy_loss_fr.item())
+                        print('trans loss', loss.item(), loss_2.item(), copy_loss_en.item(), copy_loss_fr.item(),
+                              copy_loss_en_noise.item(), copy_loss_fr_noise.item())
                         #print(coverage)
-                """
+
                 if batch_i > 0 and batch_i % show_steps == 0:
                     srl_model.eval()
                     _, pred = torch.max(out, 1)
