@@ -171,12 +171,15 @@ class SR_Matcher(nn.Module):
         self.scorer = nn.Sequential(nn.Linear(40, 20),
                                     nn.LeakyReLU(0.1),
                                     nn.Linear(20, 1))
+        self.rel_W = nn.Parameter(
+            torch.from_numpy(np.zeros((20 + 1, 20+1)).astype("float32")).to(device))
+
         self.match_word = nn.Sequential(
             nn.Linear(2 * self.bilstm_hidden_size + 300 + 2 * self.flag_emb_size, self.mlp_size),
             nn.Tanh(),
             nn.Linear(self.mlp_size, self.target_vocab_size))
 
-    def forward(self, pred_recur, pretrained_emb, flag_emb, word_id_emb, seq_len, use_bert=False, copy = False, para=False):
+    def forward(self, pred_recur, pretrained_emb, flag_emb, word_id_emb, seq_len, use_bert=True, copy = False, para=False):
         """
         pred_recur = pred_recur.view(self.batch_size, self.bilstm_hidden_size * 2)
         pred_recur = pred_recur.unsqueeze(1).expand(self.batch_size, seq_len, self.bilstm_hidden_size * 2)
@@ -194,15 +197,27 @@ class SR_Matcher(nn.Module):
         role_hidden = pred_recur.unsqueeze(1).expand(self.batch_size, seq_len, (self.target_vocab_size-1), 20)
         #if copy:
         #    pretrained_emb = self.dropout_word_1(pretrained_emb)
-        if not use_bert:
+        if not True:
             combine = self.compress_word(torch.cat((pretrained_emb, word_id_emb), 2))
         else:
             combine = self.compress_bert(pretrained_emb)
-        combine = combine.unsqueeze(2).expand(self.batch_size, seq_len, self.target_vocab_size-1, 20)
-        scores = self.scorer(torch.cat((role_hidden, combine), 3)).view(self.batch_size * seq_len,
-                                                                        (self.target_vocab_size - 1))
 
-        return scores
+
+        bias_one = torch.ones((self.batch_size, seq_len, 1)).to(device)
+        combine_bias = torch.cat((combine, bias_one), 2)
+
+        bias_one = torch.ones((self.batch_size, self.target_vocab_size-1, 1)).to(device)
+        pred_recur_bias = torch.cat((pred_recur, bias_one), 2)
+        pred_recur_bias = pred_recur_bias.transpose(1,2).contiguous()
+
+        left_part = torch.mm(combine_bias.view(self.batch_size * seq_len, -1), self.rel_W)
+        left_part = left_part.view(self.batch_size, seq_len , -1)
+
+        tag_space = torch.bmm(left_part, pred_recur_bias).view(
+            self.batch_size*seq_len, self.target_vocab_size-1)
+
+
+        return tag_space
 
 class Discriminator(nn.Module):
     def __init__(self, model_params):
