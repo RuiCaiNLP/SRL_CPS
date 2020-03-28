@@ -1,5 +1,5 @@
 from __future__ import print_function
-import perfect_bert
+import model_compress_2
 import data_utils
 import inter_utils
 import pickle
@@ -330,7 +330,7 @@ if __name__ == '__main__':
         }
 
         # build model
-        srl_model = perfect_bert.SR_Model(model_params)
+        srl_model = model_compress_2.SR_Model(model_params)
 
         if USE_CUDA:
             srl_model.cuda()
