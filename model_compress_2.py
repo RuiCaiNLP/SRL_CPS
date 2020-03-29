@@ -122,7 +122,7 @@ class SR_Compressor(nn.Module):
                                          bidirectional=True,
                                          bias=True, batch_first=True)
 
-        self.merge_BF = nn.Sequential(nn.Linear((self.target_vocab_size-1) * 20,(self.target_vocab_size-1) * 20),
+        self.merge_BF = nn.Sequential(nn.Linear((self.target_vocab_size-1) * 20,(self.target_vocab_size-1) * 40),
                                       nn.LeakyReLU(0.1))
 
     def forward(self, SRL_input, word_emb, flag_emb, word_id_emb, predicates_1D, seq_len, use_bert=False, para=False):
@@ -167,12 +167,12 @@ class SR_Matcher(nn.Module):
         self.bilstm_num_layers = model_params['bilstm_num_layers']
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
         self.compress_word = nn.Sequential(nn.Linear(300 + 2 * self.flag_emb_size, 20), nn.LeakyReLU(0.1))
-        self.compress_bert = nn.Sequential(nn.Linear(768 + 0 * self.flag_emb_size, 20), nn.LeakyReLU(0.1))
+        self.compress_bert = nn.Sequential(nn.Linear(768 + 0 * self.flag_emb_size, 40), nn.LeakyReLU(0.1))
         self.scorer = nn.Sequential(nn.Linear(40, 20),
                                     nn.LeakyReLU(0.1),
                                     nn.Linear(20, 1))
         self.rel_W = nn.Parameter(
-            torch.from_numpy(np.zeros((20 + 1, 20+1)).astype("float32")).to(device))
+            torch.from_numpy(np.zeros((40 + 1, 40+1)).astype("float32")).to(device))
 
         self.match_word = nn.Sequential(
             nn.Linear(2 * self.bilstm_hidden_size + 300 + 2 * self.flag_emb_size, self.mlp_size),
@@ -193,8 +193,8 @@ class SR_Matcher(nn.Module):
         #backward_hidden = pred_recur[:, (self.target_vocab_size-1) * 10:].view(self.batch_size, (self.target_vocab_size-1),
         #                                                                   10)
         #role_hidden = torch.cat((forward_hidden, backward_hidden), 2)
-        pred_recur = pred_recur.view(self.batch_size, (self.target_vocab_size-1), 20)
-        role_hidden = pred_recur.unsqueeze(1).expand(self.batch_size, seq_len, (self.target_vocab_size-1), 20)
+        pred_recur = pred_recur.view(self.batch_size, (self.target_vocab_size-1), 40)
+        #role_hidden = pred_recur.unsqueeze(1).expand(self.batch_size, seq_len, (self.target_vocab_size-1), 20)
         #if copy:
         #    pretrained_emb = self.dropout_word_1(pretrained_emb)
         if not True:
