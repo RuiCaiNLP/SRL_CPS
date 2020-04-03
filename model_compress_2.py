@@ -49,8 +49,8 @@ class LayerNorm(torch.nn.Module):
                  dimension: int,
                  eps: float = 1e-6) -> None:
         super().__init__()
-        self.gamma = torch.nn.Parameter(torch.ones(dimension))
-        self.beta = torch.nn.Parameter(torch.zeros(dimension))
+        self.gamma = torch.nn.Parameter(torch.ones(dimension).to(device))
+        self.beta = torch.nn.Parameter(torch.zeros(dimension).to(device))
         self.eps = eps
 
     def forward(self, tensor: torch.Tensor):  # pylint: disable=arguments-differ
