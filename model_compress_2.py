@@ -507,7 +507,7 @@ class SR_Model(nn.Module):
             bert_emb_fr = bert_emb_fr[0]
             bert_emb_fr = bert_emb_fr[:, 1:-1, :].contiguous().detach()
             bert_emb_fr = bert_emb_fr[torch.arange(bert_emb_fr.size(0)).unsqueeze(-1), bert_out_positions_fr].detach()
-            bert_emb_fr = self.layer_norm(bert_emb_fr).detach()
+
 
             for i in range(len(bert_emb_fr)):
                 if i >= len(actual_lens_fr):
@@ -516,8 +516,11 @@ class SR_Model(nn.Module):
                 for j in range(len(bert_emb_fr[i])):
                     if j >= actual_lens_fr[i]:
                         bert_emb_fr[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
-            bert_emb_fr_noise = gaussian(bert_emb_fr, isTrain, 0, 0.1).detach()
+            bert_emb_fr_noise = self.layer_norm(gaussian(bert_emb_fr, isTrain, 0, 0.1)).detach()
             bert_emb_fr = bert_emb_fr.detach()
+            bert_emb_fr = self.layer_norm(bert_emb_fr).detach()
+
+
 
             bert_input_ids_en = get_torch_variable_from_np(unlabeled_data_en['bert_input_ids'])
             bert_input_mask_en = get_torch_variable_from_np(unlabeled_data_en['bert_input_mask'])
@@ -527,7 +530,7 @@ class SR_Model(nn.Module):
             bert_emb_en = bert_emb_en[0]
             bert_emb_en = bert_emb_en[:, 1:-1, :].contiguous().detach()
             bert_emb_en = bert_emb_en[torch.arange(bert_emb_en.size(0)).unsqueeze(-1), bert_out_positions_en].detach()
-            bert_emb_en = self.layer_norm(bert_emb_en).detach()
+
 
             for i in range(len(bert_emb_en)):
                 if i >= len(actual_lens_en):
@@ -536,8 +539,9 @@ class SR_Model(nn.Module):
                 for j in range(len(bert_emb_en[i])):
                     if j >= actual_lens_en[i]:
                         bert_emb_en[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
-            bert_emb_en_noise = gaussian(bert_emb_en, isTrain, 0, 0.1).detach()
+            bert_emb_en_noise = self.layer_norm(gaussian(bert_emb_en, isTrain, 0, 0.1)).detach()
             bert_emb_en = bert_emb_en.detach()
+            bert_emb_en = self.layer_norm(bert_emb_en).detach()
 
         seq_len = flag_emb.shape[1]
         SRL_output = self.SR_Labeler(bert_emb_en, flag_emb.detach(), predicates_1D, seq_len, para=True, use_bert=True)
