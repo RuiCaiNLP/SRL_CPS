@@ -507,6 +507,7 @@ class SR_Model(nn.Module):
             bert_emb_fr = bert_emb_fr[0]
             bert_emb_fr = bert_emb_fr[:, 1:-1, :].contiguous().detach()
             bert_emb_fr = bert_emb_fr[torch.arange(bert_emb_fr.size(0)).unsqueeze(-1), bert_out_positions_fr].detach()
+            bert_emb_fr = self.layer_norm(bert_emb_fr).detach()
 
             for i in range(len(bert_emb_fr)):
                 if i >= len(actual_lens_fr):
@@ -526,6 +527,7 @@ class SR_Model(nn.Module):
             bert_emb_en = bert_emb_en[0]
             bert_emb_en = bert_emb_en[:, 1:-1, :].contiguous().detach()
             bert_emb_en = bert_emb_en[torch.arange(bert_emb_en.size(0)).unsqueeze(-1), bert_out_positions_en].detach()
+            bert_emb_en = self.layer_norm(bert_emb_en).detach()
 
             for i in range(len(bert_emb_en)):
                 if i >= len(actual_lens_en):
