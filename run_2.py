@@ -413,11 +413,12 @@ if __name__ == '__main__':
                         print('para loss', loss.item(), loss_2.item())
 
                     copy_loss_en, copy_loss_fr, copy_loss_en_noise, copy_loss_fr_noise, \
-                    adapt_loss_1, adapt_loss_2 = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En',
-                                                           unlabeled=True,
-                                                           self_constrain=True, use_bert=use_bert)
+                    SRL_domain_loss, compressor_domain_loss, matcher_domain_loss \
+                        = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True,
+                                    self_constrain=True, use_bert=use_bert)
                     optimizer.zero_grad()
-                    (copy_loss_en + copy_loss_fr_noise + 0.01 * (adapt_loss_1 + adapt_loss_2)).backward()
+                    (copy_loss_en + copy_loss_fr_noise + 0.01 * (
+                    SRL_domain_loss + compressor_domain_loss)).backward()
                     # (0.01*l2loss).backward()
                     optimizer.step()
 
@@ -425,7 +426,9 @@ if __name__ == '__main__':
                         print('constrain loss', copy_loss_en.item(), copy_loss_fr.item(),
                               copy_loss_en_noise.item(), copy_loss_fr_noise.item())
                         # print(coverage)
-                        print('trans loss', adapt_loss_1.item(), adapt_loss_2.item())
+                        print('trans loss', SRL_domain_loss.item(), compressor_domain_loss.item(),
+                              matcher_domain_loss.item())
+
                 if batch_i > 0 and batch_i % show_steps == 0:
                     srl_model.eval()
                     _, pred = torch.max(out, 1)

@@ -85,10 +85,12 @@ class SR_Labeler(nn.Module):
                                     bidirectional=True,
                                     bias=True, batch_first=True)
 
-        self.bilstm_bert = nn.LSTM(input_size=768 + self.flag_emb_size,
+        self.bilstm_bert = nn.LSTM(input_size=256 + self.flag_emb_size,
                                    hidden_size=self.bilstm_hidden_size, num_layers=self.bilstm_num_layers,
                                    bidirectional=True,
                                    bias=True, batch_first=True)
+        self.Bert_extractor = nn.Sequential(nn.Linear(768, 256),
+                                            nn.Tanh())
 
         self.mlp_size = 300
         self.rel_W = nn.Parameter(
@@ -103,7 +105,8 @@ class SR_Labeler(nn.Module):
             torch.zeros(2 * self.bilstm_num_layers, self.batch_size, self.bilstm_hidden_size).to(device),
             torch.zeros(2 * self.bilstm_num_layers, self.batch_size, self.bilstm_hidden_size).to(device))
 
-        input_emb = torch.cat((pretrained_emb, flag_emb), 2)
+        extracted_features = self.Bert_extractor(pretrained_emb)
+        input_emb = torch.cat((extracted_features, flag_emb), 2)
         if para == False:
             input_emb = self.dropout_word(input_emb)
         if not use_bert:
@@ -122,7 +125,7 @@ class SR_Labeler(nn.Module):
         SRL_output = bilinear(arg_hidden, self.rel_W, pred_hidden, self.mlp_size, seq_len, 1, self.batch_size,
                               num_outputs=self.target_vocab_size, bias_x=True, bias_y=True)
         SRL_output = SRL_output.view(self.batch_size * seq_len, -1)
-        return SRL_output, bilstm_output
+        return SRL_output, extracted_features
 
 
 class SR_Compressor(nn.Module):
@@ -159,6 +162,9 @@ class SR_Compressor(nn.Module):
                                          bidirectional=True,
                                          bias=True, batch_first=True)
 
+        self.Bert_extractor = nn.Sequential(nn.Linear(768, 256),
+                                            nn.Tanh())
+
         self.merge_BF = nn.Sequential(nn.Linear((self.target_vocab_size-1) * 20,(self.target_vocab_size-1) * 20),
                                       nn.LeakyReLU(0.1))
 
@@ -178,13 +184,14 @@ class SR_Compressor(nn.Module):
                                                                                       self.bilstm_hidden_state_word)
             bilstm_output = bilstm_output_word.contiguous()
         else:
+            extracted_features1 = self.Bert_extractor(word_emb)
             compress_input = torch.cat((word_emb, SRL_input), 2)
             bilstm_output_bert, (_, bilstm_final_state_bert) = self.bilstm_layer_bert(compress_input,
                                                                                       self.bilstm_hidden_state_bert)
             bilstm_output = bilstm_output_bert.contiguous()
         bilstm_output = self.merge_BF(bilstm_output)
         pred_recur = torch.max(bilstm_output, dim=1)[0]
-        return pred_recur, bilstm_output
+        return pred_recur, extracted_features1
 
 
 class SR_Matcher(nn.Module):
@@ -214,6 +221,8 @@ class SR_Matcher(nn.Module):
             nn.Tanh(),
             nn.Linear(self.mlp_size, self.target_vocab_size))
 
+
+
     def forward(self, pred_recur, pretrained_emb, flag_emb, word_id_emb, seq_len, use_bert=True, copy = False, para=False):
         """
         pred_recur = pred_recur.view(self.batch_size, self.bilstm_hidden_size * 2)
@@ -229,15 +238,7 @@ class SR_Matcher(nn.Module):
         #                                                                   10)
         #role_hidden = torch.cat((forward_hidden, backward_hidden), 2)
         pred_recur = pred_recur.view(self.batch_size, (self.target_vocab_size-1), 20)
-        #role_hidden = pred_recur.unsqueeze(1).expand(self.batch_size, seq_len, (self.target_vocab_size-1), 20)
-        #if copy:
-        #    pretrained_emb = self.dropout_word_1(pretrained_emb)
-        if not True:
-            combine = self.compress_word(torch.cat((pretrained_emb, word_id_emb), 2))
-        else:
-            combine = self.compress_bert(pretrained_emb)
-
-
+        combine = self.compress_bert(pretrained_emb)
         bias_one = torch.ones((self.batch_size, seq_len, 1)).to(device)
         combine_bias = torch.cat((combine, bias_one), 2)
 
@@ -251,28 +252,27 @@ class SR_Matcher(nn.Module):
         tag_space = torch.bmm(left_part, pred_recur_bias).view(
             self.batch_size*seq_len, self.target_vocab_size-1)
 
-
-        return tag_space
+        return tag_space, combine
 
 class Discriminator_SRL(nn.Module):
     def __init__(self, model_params):
         super(Discriminator_SRL, self).__init__()
         self.Classifier = nn.Sequential(RevGrad(),
-                                        nn.Linear(2*model_params['bilstm_hidden_size'], model_params['bilstm_hidden_size']),
+                                        nn.Linear(256, 128),
                                         nn.LeakyReLU(0.1),
-                                        nn.Linear(model_params['bilstm_hidden_size'], 2))
+                                        nn.Linear(128, 2))
     def forward(self, x):
         #assert x.dim() == 2 and x.size(1) == self.emb_dim
         return self.Classifier(x).view(-1)
+
 
 class Discriminator_Compressor(nn.Module):
     def __init__(self, model_params):
         super(Discriminator_Compressor, self).__init__()
         self.Classifier = nn.Sequential(RevGrad(),
-                                        nn.Linear(20*(model_params['target_vocab_size']-1),
-                                                  10*(model_params['target_vocab_size']-1)),
+                                        nn.Linear(256, 128),
                                         nn.LeakyReLU(0.1),
-                                        nn.Linear(10*(model_params['target_vocab_size']-1), 2))
+                                        nn.Linear(128, 2))
     def forward(self, x):
         #assert x.dim() == 2 and x.size(1) == self.emb_dim
         return self.Classifier(x).view(-1)
@@ -354,6 +354,7 @@ class SR_Model(nn.Module):
 
         self.Discriminator_SRL = Discriminator_SRL(model_params)
         self.Discriminator_compressor = Discriminator_Compressor(model_params)
+        self.Discriminator_matcher = Discriminator_Matcher(model_params)
         self.real = 1#np.random.uniform(0.99, 1.0)  # 1
         self.fake = 0#np.random.uniform(0.0, 0.01)  # 0
 
@@ -379,7 +380,7 @@ class SR_Model(nn.Module):
         pred_recur,_ = self.SR_Compressor(SRL_input, pretrain_emb,
                                         flag_emb.detach(), None, None, seq_len, para=False, use_bert=True)
 
-        output_word = self.SR_Matcher(pred_recur, pretrain_emb, flag_emb.detach(), None, seq_len, copy = True,
+        output_word,_ = self.SR_Matcher(pred_recur, pretrain_emb, flag_emb.detach(), None, seq_len, copy = True,
                                       para=False, use_bert=True)
 
         score4Null = torch.zeros_like(output_word[:, 1:2])
@@ -568,8 +569,8 @@ class SR_Model(nn.Module):
         """
         En event vector, En word
         """
-        output_word_en_en = self.SR_Matcher(pred_recur.detach(), bert_emb_en, flag_emb.detach(), None, seq_len,
-                                            para=True, use_bert=True).detach()
+        output_word_en_en, _ = self.SR_Matcher(pred_recur.detach(), bert_emb_en, flag_emb.detach(), None, seq_len,
+                                            para=True, use_bert=True)
         score4Null = torch.zeros_like(output_word_en_en[:, 1:2])
         output_word_en_en = torch.cat((output_word_en_en[:, 0:1], score4Null, output_word_en_en[:, 1:]), 1)
 
@@ -577,7 +578,7 @@ class SR_Model(nn.Module):
         """
         Fr event vector, En word
         """
-        output_word_fr_en = self.SR_Matcher(pred_recur_fr, bert_emb_en, flag_emb.detach(), None, seq_len,
+        output_word_fr_en,_ = self.SR_Matcher(pred_recur_fr, bert_emb_en, flag_emb.detach(), None, seq_len,
                                             para=True, use_bert=True)
         score4Null = torch.zeros_like(output_word_fr_en[:, 1:2])
         output_word_fr_en = torch.cat((output_word_fr_en[:, 0:1], score4Null, output_word_fr_en[:, 1:]), 1)
@@ -586,15 +587,15 @@ class SR_Model(nn.Module):
         """
         En event vector, Fr word
         """
-        output_word_en_fr = self.SR_Matcher(pred_recur.detach(), bert_emb_fr, flag_emb_fr.detach(), None, seq_len_fr,
-                                            para=True, use_bert=True).detach()
+        output_word_en_fr,_ = self.SR_Matcher(pred_recur.detach(), bert_emb_fr, flag_emb_fr.detach(), None, seq_len_fr,
+                                            para=True, use_bert=True)
         score4Null = torch.zeros_like(output_word_en_fr[:, 1:2])
         output_word_en_fr = torch.cat((output_word_en_fr[:, 0:1], score4Null, output_word_en_fr[:, 1:]), 1)
 
         """
         Fr event vector, Fr word
          """
-        output_word_fr_fr = self.SR_Matcher(pred_recur_fr, bert_emb_fr, flag_emb_fr.detach(), None, seq_len_fr,
+        output_word_fr_fr,_ = self.SR_Matcher(pred_recur_fr, bert_emb_fr, flag_emb_fr.detach(), None, seq_len_fr,
                                             para=True, use_bert=True)
         score4Null = torch.zeros_like(output_word_fr_fr[:, 1:2])
         output_word_fr_fr = torch.cat((output_word_fr_fr[:, 0:1], score4Null, output_word_fr_fr[:, 1:]), 1)
@@ -666,9 +667,9 @@ class SR_Model(nn.Module):
                 for j in range(len(bert_emb_en[i])):
                     if j >= actual_lens_en[i]:
                         bert_emb_en[i][j] = get_torch_variable_from_np(np.zeros(768, dtype="float32"))
-
-            bert_emb_en = bert_emb_en.detach()
             bert_emb_en_noise = gaussian(bert_emb_en, isTrain, 0, 0.1).detach()
+            bert_emb_en = bert_emb_en.detach()
+
 
         seq_len = flag_emb.shape[1]
         SRL_output, SRL_h_en = self.SR_Labeler(bert_emb_en, flag_emb.detach(), predicates_1D, seq_len, para=True,
@@ -682,6 +683,12 @@ class SR_Model(nn.Module):
         pred_recur, compressor_h_en = self.SR_Compressor(SRL_input.detach(), bert_emb_en,
                                                          flag_emb.detach(), None, predicates_1D, seq_len, para=True,
                                                          use_bert=True)
+
+        output_word_en_en, matcher_h_en = self.SR_Matcher(pred_recur.detach(), bert_emb_en, flag_emb.detach(), None, seq_len,
+                                               para=True, use_bert=True)
+
+
+
 
         seq_len_fr = flag_emb_fr.shape[1]
         SRL_output_fr, SRL_h_fr = self.SR_Labeler(bert_emb_fr, flag_emb_fr.detach(), predicates_1D_fr, seq_len_fr,
@@ -697,6 +704,8 @@ class SR_Model(nn.Module):
                                                             flag_emb_fr.detach(), None, predicates_1D_fr, seq_len_fr,
                                                             para=True,
                                                             use_bert=True)
+        output_word_fr_fr, matcher_h_fr = self.SR_Matcher(pred_recur_fr.detach(), bert_emb_fr, flag_emb_fr.detach(), None, seq_len_fr,
+                                               para=True, use_bert=True)
 
         real_labels = torch.empty((30 * seq_len_en, 1), dtype=torch.long).fill_(1).view(-1)
         fake_labels = torch.empty((30 * seq_len_fr, 1), dtype=torch.long).fill_(0).view(-1)
@@ -713,7 +722,14 @@ class SR_Model(nn.Module):
         compressor_h_domain = torch.cat((compressor_h_en_domain, compressor_h_fr_domain), 0)
         criterion = nn.CrossEntropyLoss()
         compressor_domain_loss = criterion(compressor_h_domain, labels)
-        return CopyLoss_en, CopyLoss_fr, CopyLoss_en_noise, CopyLoss_fr_noise, SRL_domain_loss, compressor_domain_loss
+
+        matcher_h_en_domain = self.Discriminator_matcher(matcher_h_en).view(self.batch_size * seq_len_en, 2)
+        matcher_h_fr_domain = self.Discriminator_matcher(matcher_h_fr).view(self.batch_size * seq_len_fr, 2)
+        matcher_h_domain = torch.cat((matcher_h_en_domain, matcher_h_fr_domain), 0)
+        criterion = nn.CrossEntropyLoss()
+        matcher_domain_loss = criterion(matcher_h_domain, labels)
+        return CopyLoss_en, CopyLoss_fr, CopyLoss_en_noise, CopyLoss_fr_noise, \
+               SRL_domain_loss, compressor_domain_loss, matcher_domain_loss
 
 
     def forward(self, batch_input, lang='En', unlabeled=False, self_constrain=False, use_bert=False, isTrain=False):
@@ -722,10 +738,11 @@ class SR_Model(nn.Module):
                 loss, loss_2 = self.parallel_train_(batch_input, use_bert)
                 return loss, loss_2
             else:
-                CopyLoss_en, CopyLoss_fr, CopyLoss_en_noise, CopyLoss_fr_noise, SRL_domain_loss, compressor_domain_loss \
+                CopyLoss_en, CopyLoss_fr, CopyLoss_en_noise, CopyLoss_fr_noise, \
+                SRL_domain_loss, compressor_domain_loss, matcher_domain_loss \
                     = self.word_trans(batch_input, use_bert)
                 return CopyLoss_en, CopyLoss_fr, CopyLoss_en_noise, CopyLoss_fr_noise, \
-                       SRL_domain_loss, compressor_domain_loss
+                       SRL_domain_loss, compressor_domain_loss,matcher_domain_loss
 
         pretrain_batch = get_torch_variable_from_np(batch_input['pretrain'])
         predicates_1D = batch_input['predicates_idx']
@@ -783,14 +800,14 @@ class SR_Model(nn.Module):
                                                 flag_emb.detach(), word_id_emb, predicates_1D, seq_len, para=False,
                                                 use_bert=True)
 
-                output_word = self.SR_Matcher(pred_recur, bert_emb.detach(), flag_emb.detach(), word_id_emb.detach(), seq_len, copy=True,
+                output_word,_ = self.SR_Matcher(pred_recur, bert_emb.detach(), flag_emb.detach(), word_id_emb.detach(), seq_len, copy=True,
                                               para=False, use_bert=True)
             else:
                 pred_recur,_ = self.SR_Compressor(SRL_input_probs, bert_emb.detach(),
                                                 flag_emb.detach(), word_id_emb, predicates_1D, seq_len, para=False,
                                                 use_bert=True)
 
-                output_word = self.SR_Matcher(pred_recur, bert_emb.detach(), flag_emb.detach(), word_id_emb.detach(),
+                output_word,_ = self.SR_Matcher(pred_recur, bert_emb.detach(), flag_emb.detach(), word_id_emb.detach(),
                                               seq_len, copy=False,
                                               para=False, use_bert=True)
 
