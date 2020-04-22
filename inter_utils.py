@@ -57,9 +57,6 @@ def convert_example_to_features(tokens, tokenizer):
     val_pos = []
     end_idx = 0
     for word in tokens:
-        #log(word)
-        if word == '<NUM>':
-            word = '0'
         b_token = tokenizer.tokenize(word)  # we expect |token| = 1
         #b_token = word
         input_tokens.extend(b_token)
@@ -87,8 +84,7 @@ def convert_example_to_features(tokens, tokenizer):
 
 
 ## need for input: word, is_Predicate
-def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx, pretrain2idx, fr_pretrain2idx,
-              deprel2idx, argument2idx, idx2word, shuffle=False, lang="En", use_bert=False, para=False):
+def get_batch(input_data, batch_size,  argument2idx, shuffle=False, lang="En", use_bert=False, para=False):
 
 
     role_number = len(argument2idx)
@@ -151,12 +147,6 @@ def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx,
             text_batch += [[_PAD_]] * (batch_size - len(text_batch))
         #print(text_batch)
 
-        if lang=='En':
-            word_batch = [[word2idx.get(item[6],word2idx[_UNK_]) for item in sentence] for sentence in data_batch]
-            pad_word_batch = np.array(pad_batch(word_batch, batch_size, word2idx[_PAD_]))
-        else:
-            word_batch = [[fr_word2idx.get(item[6], fr_word2idx[_UNK_]) for item in sentence] for sentence in data_batch]
-            pad_word_batch = np.array(pad_batch(word_batch, batch_size, fr_word2idx[_PAD_]))
 
         if use_bert:
             bert_inst_batch = []
@@ -165,7 +155,7 @@ def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx,
                     sen[0] = capitalize(sen[0])
                 bert_inst_batch.append(convert_example_to_features(sen, tokenizer))
             bert_max_length = max([len(inst['input_ids']) for inst in bert_inst_batch])
-            batch_length = len(pad_word_batch[0])
+            batch_length = len(pad_sentence_flags_batch[0])
             bert_inputs_ids = np.zeros([batch_size, bert_max_length], dtype=np.int64)
             bert_input_mask = np.zeros([batch_size, bert_max_length], dtype=np.int64)
             bert_out_positions = np.empty([batch_size, batch_length], dtype=np.int64)
@@ -181,84 +171,16 @@ def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx,
                 else:
                     bert_out_positions[i] = berts['out_positions']
 
-
-
         else:
             bert_inputs_ids = None
             bert_input_mask = None
             bert_out_positions = None
-
-        word_times_batch = []
-        mask_duplicate_word_para = []
-        mask_unk_word = []
-        batch_id = 0
-        for sentence in data_batch:
-            word_dict = dict()
-            word_times = []
-            for item in sentence:
-                word = item[6]
-                if word in word_dict:
-                    word_dict[word] +=1
-                    word_times.append(word_dict[word])
-                else:
-                    word_dict[word] = 1
-                    word_times.append(1)
-            word_times_batch.append(word_times)
-
-            mask_para = []
-            for item in sentence:
-                word = item[6]
-                assert word in word_dict
-                if word_dict[word] == 1:
-                    mask_para.append(1)
-                else:
-                    mask_para.append(0)
-            mask_duplicate_word_para.append(mask_para)
-
-            word_id = 0
-            mask_unk = []
-            for item in sentence:
-                word = item[6]
-                assert word in word_dict
-                if word_batch[batch_id][word_id] == 1:
-                    mask_unk.append(0)
-                else:
-                    mask_unk.append(1)
-                word_id +=1
-            mask_unk_word.append(mask_para)
-            batch_id+=1
-
-        pad_word_times_batch = np.array(pad_batch(word_times_batch, batch_size, 0))
-        pad_mask_duplicate_word_para = np.array(pad_batch(mask_duplicate_word_para, batch_size, 1))
-        pad_mask_unk_word = np.array(pad_batch(mask_unk_word, batch_size, 1))
-
 
 
 
         argument_batch = [[argument2idx.get(item[12],argument2idx['_']) for item in sentence] for sentence in data_batch]
         pad_argument_batch = np.array(pad_batch(argument_batch, batch_size, argument2idx[_PAD_]))
         flat_argument_batch = np.array([item for line in pad_argument_batch for item in line])
-
-        if False:
-            for i in range(batch_size):
-                for j in range(len(data_batch[i])):
-                    role = data_batch[i][j][12]
-                    role_idx = argument2idx.get(role, argument2idx["_"])
-                    if role_idx == 1:
-                        continue
-                    role_index_batch[i][role_idx] = j
-                    role_mask_batch[i][role_idx] = 1
-        else:
-            role_index_batch = None
-            role_mask_batch= None
-
-        if lang=='En':
-            pretrain_word_batch = [[pretrain2idx.get(item[6], pretrain2idx[_UNK_]) for item in sentence] for sentence in data_batch]
-            pad_pretrain_word_batch = np.array(pad_batch(pretrain_word_batch, batch_size, pretrain2idx[_PAD_]))
-        else:
-            pretrain_word_batch = [[fr_pretrain2idx.get(item[6], fr_pretrain2idx[_UNK_]) for item in sentence] for sentence in
-                                   data_batch]
-            pad_pretrain_word_batch = np.array(pad_batch(pretrain_word_batch, batch_size, pretrain2idx[_PAD_]))
 
         # flag indicies
         pad_flag_indices = [0 for _ in range(batch_size)]
@@ -277,17 +199,7 @@ def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx,
             "flag":pad_flag_batch,
             "sen_flags":pad_sentence_flags_batch,
             "flat_flags":flat_flags_batch,
-            "word_times":pad_word_times_batch,
-            #"fr_flag": fr_pad_flag_batch,
-            #"fr_loss_mask":fr_loss_mask_batch,
-            "word":pad_word_batch,
-            #"fr_word": fr_pad_word_batch,
-            #"lemma":pad_lemma_batch,
-            #"pos":pad_pos_batch,
-            "pretrain":pad_pretrain_word_batch,
-            #"fr_pretrain": fr_pad_pretrain_word_batch,
-            #"head":pad_head_batch,
-            #"rhead":pad_rhead_batch,
+
             #"deprel":pad_deprel_batch,
             "argument":pad_argument_batch,
             "flat_argument":flat_argument_batch,
@@ -309,8 +221,6 @@ def get_batch(input_data, batch_size, word2idx, fr_word2idx, lemma2idx, pos2idx,
             'bert_input_ids': bert_inputs_ids,
             'bert_input_mask': bert_input_mask,
             'bert_out_positions': bert_out_positions,
-            'mask_para': pad_mask_duplicate_word_para,
-            'mask_unk': pad_mask_unk_word
         }
 
         yield batch

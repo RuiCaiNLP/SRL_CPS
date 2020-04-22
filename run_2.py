@@ -174,73 +174,54 @@ if __name__ == '__main__':
     print('\t start loading data...')
     start_t = time.time()
 
-    train_input_file = os.path.join(os.path.dirname(__file__), 'temp/train.pickle.input')
-    dev_input_file = os.path.join(os.path.dirname(__file__), 'temp/dev.pickle.input')
-    train_data = data_utils.load_dump_data(train_input_file)
-    dev_data = data_utils.load_dump_data(dev_input_file)
-    train_dataset = train_data['input_data']
-    dev_dataset = dev_data['input_data']
+    En_train_file_CoNLL = os.path.join(os.path.dirname(__file__), 'temp/En_train_conll.pickle.input')
+    Fr_dev_file = os.path.join(os.path.dirname(__file__), 'temp/Fr_dev.pickle.input')
+    En_train_data_CoNLL = data_utils.load_dump_data(En_train_file_CoNLL)
+    En_train_file_UPB = os.path.join(os.path.dirname(__file__), 'temp/En_train_UPB.pickle.input')
+    En_train_data_UPB = data_utils.load_dump_data(En_train_file_UPB)
+    Fr_dev_data = data_utils.load_dump_data(Fr_dev_file)
+    train_dataset = En_train_data_UPB['input_data']
+    dev_dataset =  En_train_data_CoNLL['input_data']
 
-    train_input_file_fr = os.path.join(os.path.dirname(__file__), 'temp/train_fr.pickle.input')
-    dev_input_file_fr = os.path.join(os.path.dirname(__file__), 'temp/dev_fr.pickle.input')
-    train_data_fr = data_utils.load_dump_data(train_input_file_fr)
+    #train_input_file_fr = os.path.join(os.path.dirname(__file__), 'temp/train_fr.pickle.input')
+    dev_input_file_fr = os.path.join(os.path.dirname(__file__), 'temp/Fr_dev.pickle.input')
     dev_data_fr = data_utils.load_dump_data(dev_input_file_fr)
-    train_dataset_fr = train_data_fr['input_data']
     dev_dataset_fr = dev_data_fr['input_data']
-    #log(len(train_dataset_fr))
-    #log(len(dev_dataset_fr))
-    labeled_dataset_fr = train_dataset_fr + dev_dataset_fr
-    #log(len(labeled_dataset_fr))
+    labeled_dataset_fr = dev_dataset_fr
+    print(len(labeled_dataset_fr))
 
+    dev_input_file_en = os.path.join(os.path.dirname(__file__), 'temp/En_dev_CoNLL.pickle.input')
+    dev_data_en = data_utils.load_dump_data(dev_input_file_en)
+    dev_dataset_en = dev_data_en['input_data']
+
+    dev_input_file_de = os.path.join(os.path.dirname(__file__), 'temp/De_dev.pickle.input')
+    dev_data_de = data_utils.load_dump_data(dev_input_file_de)
+    dev_dataset_de = dev_data_de['input_data']
+
+    dev_input_file_zh = os.path.join(os.path.dirname(__file__), 'temp/Zh_dev.pickle.input')
+    dev_data_zh = data_utils.load_dump_data(dev_input_file_zh)
+    dev_dataset_zh = dev_data_zh['input_data']
+
+    """
     unlabeled_file_en = os.path.join(os.path.dirname(__file__), 'temp/unlabeled_en.pickle.input')
     unlabeled_file_fr = os.path.join(os.path.dirname(__file__), 'temp/unlabeled_fr.pickle.input')
     unlabeled_data_en = data_utils.load_dump_data(unlabeled_file_en)
     unlabeled_data_fr = data_utils.load_dump_data(unlabeled_file_fr)
     unlabeled_dataset_en = unlabeled_data_en['input_data']
     unlabeled_dataset_fr = unlabeled_data_fr['input_data']
-
-
-    word2idx = data_utils.load_dump_data(os.path.join(os.path.dirname(__file__), 'temp/word2idx.bin'))
-    idx2word = data_utils.load_dump_data(os.path.join(os.path.dirname(__file__), 'temp/idx2word.bin'))
-
-    fr_word2idx = data_utils.load_dump_data(os.path.join(os.path.dirname(__file__), 'temp/fr_word2idx.bin'))
-    fr_idx2word = data_utils.load_dump_data(os.path.join(os.path.dirname(__file__), 'temp/fr_idx2word.bin'))
-
-    lemma2idx = data_utils.load_dump_data(os.path.join(os.path.dirname(__file__), 'temp/lemma2idx.bin'))
-    idx2lemma = data_utils.load_dump_data(os.path.join(os.path.dirname(__file__), 'temp/idx2lemma.bin'))
-
-    pos2idx = data_utils.load_dump_data(os.path.join(os.path.dirname(__file__), 'temp/pos2idx.bin'))
-    idx2pos = data_utils.load_dump_data(os.path.join(os.path.dirname(__file__), 'temp/idx2pos.bin'))
-
-    deprel2idx = data_utils.load_dump_data(os.path.join(os.path.dirname(__file__), 'temp/deprel2idx.bin'))
-    idx2deprel = data_utils.load_dump_data(os.path.join(os.path.dirname(__file__), 'temp/idx2deprel.bin'))
-
-    pretrain2idx = data_utils.load_dump_data(os.path.join(os.path.dirname(__file__), 'temp/pretrain2idx.bin'))
-    idx2pretrain = data_utils.load_dump_data(os.path.join(os.path.dirname(__file__), 'temp/idx2pretrain.bin'))
-
-    fr_pretrain2idx = data_utils.load_dump_data(os.path.join(os.path.dirname(__file__), 'temp/fr_pretrain2idx.bin'))
-    fr_idx2pretrain = data_utils.load_dump_data(os.path.join(os.path.dirname(__file__), 'temp/fr_idx2pretrain.bin'))
+    """
 
     argument2idx = data_utils.load_dump_data(os.path.join(os.path.dirname(__file__), 'temp/argument2idx.bin'))
     idx2argument = data_utils.load_dump_data(os.path.join(os.path.dirname(__file__), 'temp/idx2argument.bin'))
 
-    pretrain_emb_weight = data_utils.load_dump_data(os.path.join(os.path.dirname(__file__), 'temp/pretrain.emb.bin'))
-    fr_pretrain_emb_weight = data_utils.load_dump_data(os.path.join(os.path.dirname(__file__), 'temp/fr_pretrain.emb.bin'))
-
     print('\t data loading finished! consuming {} s'.format(int(time.time() - start_t)))
-
-    print(word2idx['<UNK>'])
-    print(pretrain_emb_weight[word2idx['<UNK>']])
-    print(word2idx['<PAD>'])
-    print(pretrain_emb_weight[fr_word2idx['<PAD>']])
-    # result_path = os.path.join(os.path.dirname(__file__),'result/')
 
     result_path = args.result_path
 
     print('\t start building model...')
     start_t = time.time()
 
-    dev_predicate_sum = dev_data['predicate_sum']
+    dev_predicate_sum = dev_data_en['predicate_sum']
     dev_predicate_correct = int(dev_predicate_sum * args.dev_pred_acc)
 
 
@@ -293,29 +274,14 @@ if __name__ == '__main__':
             "dropout_mlp": dropout_mlp,
             "use_biaffine": use_biaffine,
             "batch_size": batch_size,
-            "word_vocab_size": len(word2idx),
-            "fr_word_vocab_size": len(fr_word2idx),
-            "lemma_vocab_size": len(lemma2idx),
-            "pos_vocab_size": len(pos2idx),
-            "deprel_vocab_size": len(deprel2idx),
-            "pretrain_vocab_size": len(pretrain2idx),
-            "fr_pretrain_vocab_size": len(fr_pretrain2idx),
             "word_emb_size": word_embedding_size,
             "lemma_emb_size": lemma_embedding_size,
             "pos_emb_size": pos_embedding_size,
             "pretrain_emb_size": pretrained_embedding_size,
-            "pretrain_emb_weight": pretrain_emb_weight,
-            "fr_pretrain_emb_weight": fr_pretrain_emb_weight,
             "bilstm_num_layers": bilstm_num_layers,
             "bilstm_hidden_size": bilstm_hidden_size,
             "target_vocab_size": len(argument2idx),
             "use_highway": use_highway,
-            "highway_layers": highway_layers,
-            "use_self_attn": use_self_attn,
-            "self_attn_head": self_attn_head,
-            "use_deprel": use_deprel,
-            "deprel_emb_size": deprel_embedding_size,
-            "deprel2idx": deprel2idx,
             "use_flag_embedding": use_flag_embedding,
             "flag_embedding_size": flag_embedding_size,
             'use_elmo': use_elmo,
@@ -351,6 +317,7 @@ if __name__ == '__main__':
         test_best_score = None
         test_ood_best_score = None
         use_bert = True
+        """
         unlabeled_Generator_En = inter_utils.get_batch(unlabeled_dataset_en, batch_size, word2idx, fr_word2idx,
                                                        lemma2idx, pos2idx, pretrain2idx, fr_pretrain2idx,
                                                        deprel2idx, argument2idx, idx2word, shuffle=False,
@@ -359,13 +326,11 @@ if __name__ == '__main__':
                                                        lemma2idx, pos2idx, pretrain2idx, fr_pretrain2idx,
                                                        deprel2idx, argument2idx, idx2word, shuffle=False,
                                                        lang="Fr", use_bert=use_bert, para=True)
-
+        """
         for epoch in range(30):
 
             for batch_i, train_input_data in enumerate(
-                    inter_utils.get_batch(train_dataset, batch_size, word2idx, fr_word2idx,
-                                          lemma2idx, pos2idx, pretrain2idx, fr_pretrain2idx,
-                                          deprel2idx, argument2idx, idx2word, shuffle=True,
+                    inter_utils.get_batch(train_dataset, batch_size, argument2idx, shuffle=True,
                                           lang='En', use_bert=use_bert)):
                 srl_model.train()
                 flat_argument = train_input_data['flat_argument']
@@ -384,7 +349,7 @@ if __name__ == '__main__':
 
 
                 #batch_size=1
-
+                """
                 try:
                     unlabeled_data_en = next(unlabeled_Generator_En)
                     unlabeled_data_fr = next(unlabeled_Generator_Fr)
@@ -428,7 +393,7 @@ if __name__ == '__main__':
                         # print(coverage)
                         print('trans loss', SRL_domain_loss.item(), compressor_domain_loss.item(),
                               matcher_domain_loss.item())
-
+                """
                 if batch_i > 0 and batch_i % show_steps == 0:
                     srl_model.eval()
                     _, pred = torch.max(out, 1)
@@ -439,20 +404,14 @@ if __name__ == '__main__':
 
                     #eval_train_batch(epoch, batch_i, loss.item(), flat_argument, pred, argument2idx)
 
-                    print('FR test:')
-                    score, dev_output = eval_data(srl_model, elmo, labeled_dataset_fr, batch_size, word2idx,
-                                                  fr_word2idx,
-                                                  lemma2idx,
-                                                  pos2idx, pretrain2idx, fr_pretrain2idx, deprel2idx, argument2idx,
-                                                  idx2argument, idx2word,
+                    print('Zh test:')
+                    score, dev_output = eval_data(srl_model, elmo, dev_dataset_zh, batch_size, argument2idx,
+                                                  idx2argument,
                                                   False,
                                                   dev_predicate_correct, dev_predicate_sum, lang='Fr', use_bert=use_bert)
-                    print('En test:')
-                    eval_data(srl_model, elmo, dev_dataset, batch_size, word2idx,
-                              fr_word2idx,
-                              lemma2idx,
-                              pos2idx, pretrain2idx, fr_pretrain2idx, deprel2idx, argument2idx,
-                              idx2argument, idx2word,
+                    print('De test:')
+                    eval_data(srl_model, elmo, dev_dataset_de, batch_size, argument2idx,
+                              idx2argument,
                               False,
                               dev_predicate_correct, dev_predicate_sum, lang='En', use_bert=use_bert)
 

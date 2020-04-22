@@ -35,7 +35,7 @@ def sem_f1_score(target, predict, argument2idx, unify_pred = False, predicate_co
     golden_args = 0
     correct_args = 0
     num_correct = 0
-    total = 0
+    total = 1
 
     if unify_pred:
         predicate_correct = 0
@@ -112,7 +112,7 @@ def eval_train_batch(epoch,batch_i,loss,golden_batch,predict_batch,argument2idx)
     log('epoch {} batch {} loss:{:4f} accurate:{:.2f} predict:{} golden:{} correct:{}'.format(epoch, batch_i, loss, num_correct/batch_total*100, predict_args, golden_args, correct_args))
 
 
-def eval_data(model, elmo, dataset, batch_size ,word2idx, fr_word2idx, lemma2idx, pos2idx, pretrain2idx, fr_pretrain2idx, deprel2idx, argument2idx, idx2argument, idx2word, unify_pred = False, predicate_correct=0, predicate_sum=0, lang='En', use_bert=False):
+def eval_data(model, elmo, dataset, batch_size , argument2idx, idx2argument, unify_pred = False, predicate_correct=0, predicate_sum=0, lang='En', use_bert=False):
 
     model.eval()
     golden = []
@@ -124,9 +124,7 @@ def eval_data(model, elmo, dataset, batch_size ,word2idx, fr_word2idx, lemma2idx
     cur_sentence = None
     cur_sentence_data = None
 
-    for batch_i, input_data in enumerate(inter_utils.get_batch(dataset, batch_size, word2idx, fr_word2idx,
-                                                             lemma2idx, pos2idx, pretrain2idx,
-                                                             fr_pretrain2idx, deprel2idx, argument2idx, idx2word, lang=lang, use_bert=use_bert)):
+    for batch_i, input_data in enumerate(inter_utils.get_batch(dataset, batch_size, argument2idx, lang=lang, use_bert=use_bert)):
         target_argument = input_data['argument']
         flat_argument = input_data['flat_argument']
         target_batch_variable = get_torch_variable_from_np(flat_argument)
@@ -138,7 +136,7 @@ def eval_data(model, elmo, dataset, batch_size ,word2idx, fr_word2idx, lemma2idx
         seq_len = input_data['seq_len']
         bs = input_data['batch_size']
         psl = input_data['pad_seq_len']
-        mask_unk = input_data['mask_unk']
+        #mask_unk = input_data['mask_unk']
         out, out_word, _ = model(input_data, lang=lang, use_bert=use_bert)
 
         _, pred = torch.max(out, 1)
@@ -153,12 +151,7 @@ def eval_data(model, elmo, dataset, batch_size ,word2idx, fr_word2idx, lemma2idx
         _, pred_word = torch.max(out_word, 1)
         pred_word = get_data(pred_word)
         pred_word = np.reshape(pred_word, target_argument.shape)
-
-        for idx in range(pred.shape[0]):
-            for j in range(pred.shape[1]):
-                if mask_unk[idx][j] == 0:
-                    pred_word[idx][j] = 0
-                    target_argument[idx][j] = 0
+        for idx in range(pred_word.shape[0]):
             predict_word.append(list(pred_word[idx]))
             golden_word.append(list(target_argument[idx]))
         ##############################################
@@ -188,6 +181,7 @@ def eval_data(model, elmo, dataset, batch_size ,word2idx, fr_word2idx, lemma2idx
     
     score = sem_f1_score(golden, predict, argument2idx, unify_pred, predicate_correct, predicate_sum)
     score_word = sem_f1_score(golden_word, predict_word, argument2idx, unify_pred, predicate_correct, predicate_sum)
+
     """
     P = correct_pos / NonullPredict_pos
     R = correct_pos / NonullTruth_pos

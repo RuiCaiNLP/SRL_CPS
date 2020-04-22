@@ -71,7 +71,6 @@ class SR_Labeler(nn.Module):
         self.target_vocab_size = model_params['target_vocab_size']
         self.use_flag_embedding = model_params['use_flag_embedding']
         self.flag_emb_size = model_params['flag_embedding_size']
-        self.pretrain_emb_size = model_params['pretrain_emb_size']
 
         self.bilstm_num_layers = model_params['bilstm_num_layers']
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
@@ -139,7 +138,6 @@ class SR_Compressor(nn.Module):
         self.target_vocab_size = model_params['target_vocab_size']
         self.use_flag_embedding = model_params['use_flag_embedding']
         self.flag_emb_size = model_params['flag_embedding_size']
-        self.pretrain_emb_size = model_params['pretrain_emb_size']
 
         self.bilstm_num_layers = model_params['bilstm_num_layers']
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
@@ -168,7 +166,7 @@ class SR_Compressor(nn.Module):
         self.merge_BF = nn.Sequential(nn.Linear((self.target_vocab_size-1) * 20,(self.target_vocab_size-1) * 20),
                                       nn.LeakyReLU(0.1))
 
-    def forward(self, SRL_input, word_emb, flag_emb, word_id_emb, predicates_1D, seq_len, use_bert=False, para=False):
+    def forward(self, SRL_input, word_emb, flag_emb, predicates_1D, seq_len, use_bert=False, para=False):
         self.bilstm_hidden_state_word = (
             torch.zeros(2 * 2, self.batch_size, (self.target_vocab_size-1) * 10).to(device),
             torch.zeros(2 * 2, self.batch_size, (self.target_vocab_size-1) * 10).to(device))
@@ -179,7 +177,7 @@ class SR_Compressor(nn.Module):
 
         SRL_input = SRL_input.view(self.batch_size, seq_len, -1)
         if not use_bert:
-            compress_input = torch.cat((word_emb, flag_emb, word_id_emb, SRL_input), 2)
+            compress_input = torch.cat((word_emb, flag_emb, SRL_input), 2)
             bilstm_output_word, (_, bilstm_final_state_word) = self.bilstm_layer_word(compress_input,
                                                                                       self.bilstm_hidden_state_word)
             bilstm_output = bilstm_output_word.contiguous()
@@ -206,7 +204,6 @@ class SR_Matcher(nn.Module):
         self.target_vocab_size = model_params['target_vocab_size']
         self.use_flag_embedding = model_params['use_flag_embedding']
         self.flag_emb_size = model_params['flag_embedding_size']
-        self.pretrain_emb_size = model_params['pretrain_emb_size']
 
         self.bilstm_num_layers = model_params['bilstm_num_layers']
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
@@ -223,7 +220,7 @@ class SR_Matcher(nn.Module):
 
 
 
-    def forward(self, pred_recur, pretrained_emb, flag_emb, word_id_emb, seq_len, use_bert=True, copy = False, para=False):
+    def forward(self, pred_recur, pretrained_emb, flag_emb, seq_len, use_bert=True, copy = False, para=False):
         """
         pred_recur = pred_recur.view(self.batch_size, self.bilstm_hidden_size * 2)
         pred_recur = pred_recur.unsqueeze(1).expand(self.batch_size, seq_len, self.bilstm_hidden_size * 2)
@@ -300,32 +297,20 @@ class SR_Model(nn.Module):
         self.target_vocab_size = model_params['target_vocab_size']
         self.use_flag_embedding = model_params['use_flag_embedding']
         self.flag_emb_size = model_params['flag_embedding_size']
-        self.pretrain_emb_size = model_params['pretrain_emb_size']
 
         self.bilstm_num_layers = model_params['bilstm_num_layers']
         self.bilstm_hidden_size = model_params['bilstm_hidden_size']
         self.use_biaffine = model_params['use_biaffine']
 
-        self.word_vocab_size = model_params['word_vocab_size']
-        self.fr_word_vocab_size = model_params['fr_word_vocab_size']
-        self.pretrain_vocab_size = model_params['pretrain_vocab_size']
-        self.fr_pretrain_vocab_size = model_params['fr_pretrain_vocab_size']
+
         self.word_emb_size = model_params['word_emb_size']
         self.pretrain_emb_size = model_params['pretrain_emb_size']
-        self.pretrain_emb_weight = model_params['pretrain_emb_weight']
-        self.fr_pretrain_emb_weight = model_params['fr_pretrain_emb_weight']
+
 
         self.use_flag_embedding = model_params['use_flag_embedding']
         self.flag_emb_size = model_params['flag_embedding_size']
 
-        self.pretrained_embedding = nn.Embedding(self.pretrain_vocab_size, self.pretrain_emb_size)
-        self.pretrained_embedding.weight.data.copy_(torch.from_numpy(self.pretrain_emb_weight))
-        self.fr_pretrained_embedding = nn.Embedding(self.fr_pretrain_vocab_size, self.pretrain_emb_size)
-        self.fr_pretrained_embedding.weight.data.copy_(torch.from_numpy(self.fr_pretrain_emb_weight))
 
-        self.word_matrix = nn.Linear(self.pretrain_emb_size, self.pretrain_emb_size)
-        self.word_matrix.weight.data.copy_(
-            torch.from_numpy(np.eye(self.pretrain_emb_size, self.pretrain_emb_size, dtype="float32")))
 
         self.id_embedding = nn.Embedding(100, self.flag_emb_size)
         self.id_embedding.weight.data.uniform_(-1.0, 1.0)
@@ -334,11 +319,6 @@ class SR_Model(nn.Module):
             self.flag_embedding = nn.Embedding(2, self.flag_emb_size)
             self.flag_embedding.weight.data.uniform_(-1.0, 1.0)
 
-        self.word_embedding = nn.Embedding(self.word_vocab_size, self.word_emb_size)
-        self.word_embedding.weight.data.uniform_(-1.0, 1.0)
-
-        self.fr_word_embedding = nn.Embedding(self.fr_word_vocab_size, self.word_emb_size)
-        self.fr_word_embedding.weight.data.uniform_(-1.0, 1.0)
 
         self.word_dropout = nn.Dropout(p=0.5)
         self.out_dropout = nn.Dropout(p=0.3)
@@ -744,11 +724,8 @@ class SR_Model(nn.Module):
                 return CopyLoss_en, CopyLoss_fr, CopyLoss_en_noise, CopyLoss_fr_noise, \
                        SRL_domain_loss, compressor_domain_loss,matcher_domain_loss
 
-        pretrain_batch = get_torch_variable_from_np(batch_input['pretrain'])
         predicates_1D = batch_input['predicates_idx']
         flag_batch = get_torch_variable_from_np(batch_input['flag'])
-        word_id = get_torch_variable_from_np(batch_input['word_times'])
-        word_id_emb = self.id_embedding(word_id)
         flag_emb = self.flag_embedding(flag_batch)
         actual_lens = batch_input['seq_len']
         # print(actual_lens)
@@ -772,11 +749,6 @@ class SR_Model(nn.Module):
             bert_emb = bert_emb.detach()
 
 
-        if lang == "En":
-            pretrain_emb = self.pretrained_embedding(pretrain_batch).detach()
-        else:
-            pretrain_emb = self.fr_pretrained_embedding(pretrain_batch).detach()
-
         seq_len = flag_emb.shape[1]
         if not use_bert:
             SRL_output = self.SR_Labeler(pretrain_emb, flag_emb, predicates_1D, seq_len, para=False)
@@ -797,17 +769,17 @@ class SR_Model(nn.Module):
 
             if isTrain:
                 pred_recur,_ = self.SR_Compressor(SRL_input_probs, bert_emb.detach(),
-                                                flag_emb.detach(), word_id_emb, predicates_1D, seq_len, para=False,
+                                                flag_emb.detach(),  predicates_1D, seq_len, para=False,
                                                 use_bert=True)
 
-                output_word,_ = self.SR_Matcher(pred_recur, bert_emb.detach(), flag_emb.detach(), word_id_emb.detach(), seq_len, copy=True,
+                output_word,_ = self.SR_Matcher(pred_recur, bert_emb.detach(), flag_emb.detach(), seq_len, copy=True,
                                               para=False, use_bert=True)
             else:
                 pred_recur,_ = self.SR_Compressor(SRL_input_probs, bert_emb.detach(),
-                                                flag_emb.detach(), word_id_emb, predicates_1D, seq_len, para=False,
+                                                flag_emb.detach(),predicates_1D, seq_len, para=False,
                                                 use_bert=True)
 
-                output_word,_ = self.SR_Matcher(pred_recur, bert_emb.detach(), flag_emb.detach(), word_id_emb.detach(),
+                output_word,_ = self.SR_Matcher(pred_recur, bert_emb.detach(), flag_emb.detach(),
                                               seq_len, copy=False,
                                               para=False, use_bert=True)
 
