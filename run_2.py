@@ -377,6 +377,8 @@ if __name__ == '__main__':
                     if batch_i % 50 == 0:
                         print('para loss', loss.item(), loss_2.item())
 
+
+
                     copy_loss_en, copy_loss_fr, copy_loss_en_noise, copy_loss_fr_noise, \
                     SRL_domain_loss, compressor_domain_loss, matcher_domain_loss \
                         = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True,
