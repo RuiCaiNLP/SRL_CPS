@@ -180,7 +180,7 @@ if __name__ == '__main__':
     En_train_file_UPB = os.path.join(os.path.dirname(__file__), 'temp/En_train_UPB.pickle.input')
     En_train_data_UPB = data_utils.load_dump_data(En_train_file_UPB)
     Fr_dev_data = data_utils.load_dump_data(Fr_dev_file)
-    train_dataset = En_train_data_UPB['input_data']
+    train_dataset = En_train_data_CoNLL['input_data']
     dev_dataset =  En_train_data_CoNLL['input_data']
 
     #train_input_file_fr = os.path.join(os.path.dirname(__file__), 'temp/train_fr.pickle.input')
@@ -194,6 +194,10 @@ if __name__ == '__main__':
     dev_data_en = data_utils.load_dump_data(dev_input_file_en)
     dev_dataset_en = dev_data_en['input_data']
 
+    dev_input_file_en = os.path.join(os.path.dirname(__file__), 'temp/En_dev_UPB.pickle.input')
+    dev_data_en_UPB = data_utils.load_dump_data(dev_input_file_en)
+    dev_dataset_en_UPB = dev_data_en_UPB['input_data']
+
     dev_input_file_de = os.path.join(os.path.dirname(__file__), 'temp/De_dev.pickle.input')
     dev_data_de = data_utils.load_dump_data(dev_input_file_de)
     dev_dataset_de = dev_data_de['input_data']
@@ -202,17 +206,24 @@ if __name__ == '__main__':
     dev_data_zh = data_utils.load_dump_data(dev_input_file_zh)
     dev_dataset_zh = dev_data_zh['input_data']
 
-    """
     unlabeled_file_en = os.path.join(os.path.dirname(__file__), 'temp/unlabeled_en.pickle.input')
     unlabeled_file_fr = os.path.join(os.path.dirname(__file__), 'temp/unlabeled_fr.pickle.input')
     unlabeled_data_en = data_utils.load_dump_data(unlabeled_file_en)
     unlabeled_data_fr = data_utils.load_dump_data(unlabeled_file_fr)
     unlabeled_dataset_en = unlabeled_data_en['input_data']
     unlabeled_dataset_fr = unlabeled_data_fr['input_data']
-    """
 
-    argument2idx = data_utils.load_dump_data(os.path.join(os.path.dirname(__file__), 'temp/argument2idx.bin'))
-    idx2argument = data_utils.load_dump_data(os.path.join(os.path.dirname(__file__), 'temp/idx2argument.bin'))
+    unlabeled_file_en_UPB = os.path.join(os.path.dirname(__file__), 'temp/para_EnZh_en.pickle.input')
+    unlabeled_file_zh_UPB = os.path.join(os.path.dirname(__file__), 'temp/para_EnZh_zh.pickle.input')
+    unlabeled_data_en_UPB = data_utils.load_dump_data(unlabeled_file_en_UPB)
+    unlabeled_data_zh_UPB = data_utils.load_dump_data(unlabeled_file_zh_UPB)
+    unlabeled_dataset_en_UPB = unlabeled_data_en_UPB['input_data']
+    unlabeled_dataset_zh_UPB = unlabeled_data_zh_UPB['input_data']
+
+
+
+    argument2idx = data_utils.load_dump_data(os.path.join(os.path.dirname(__file__), 'temp/fr_argument2idx.bin'))
+    idx2argument = data_utils.load_dump_data(os.path.join(os.path.dirname(__file__), 'temp/fr_idx2argument.bin'))
 
     print('\t data loading finished! consuming {} s'.format(int(time.time() - start_t)))
 
@@ -317,16 +328,12 @@ if __name__ == '__main__':
         test_best_score = None
         test_ood_best_score = None
         use_bert = True
-        """
-        unlabeled_Generator_En = inter_utils.get_batch(unlabeled_dataset_en, batch_size, word2idx, fr_word2idx,
-                                                       lemma2idx, pos2idx, pretrain2idx, fr_pretrain2idx,
-                                                       deprel2idx, argument2idx, idx2word, shuffle=False,
+
+        unlabeled_Generator_En = inter_utils.get_batch(unlabeled_dataset_en, batch_size, argument2idx, shuffle=False,
                                                        lang="En", use_bert=use_bert, para=True)
-        unlabeled_Generator_Fr = inter_utils.get_batch(unlabeled_dataset_fr, batch_size, word2idx, fr_word2idx,
-                                                       lemma2idx, pos2idx, pretrain2idx, fr_pretrain2idx,
-                                                       deprel2idx, argument2idx, idx2word, shuffle=False,
+        unlabeled_Generator_Fr = inter_utils.get_batch(unlabeled_dataset_fr, batch_size, argument2idx, shuffle=False,
                                                        lang="Fr", use_bert=use_bert, para=True)
-        """
+
         for epoch in range(30):
 
             for batch_i, train_input_data in enumerate(
@@ -349,30 +356,23 @@ if __name__ == '__main__':
 
 
                 #batch_size=1
-                """
+
                 try:
                     unlabeled_data_en = next(unlabeled_Generator_En)
                     unlabeled_data_fr = next(unlabeled_Generator_Fr)
 
                 except StopIteration:
-                    unlabeled_Generator_En = inter_utils.get_batch(unlabeled_dataset_en, batch_size, word2idx,
-                                                                   fr_word2idx,
-                                                                   lemma2idx, pos2idx, pretrain2idx, fr_pretrain2idx,
-                                                                   deprel2idx, argument2idx, idx2word, shuffle=False,
+                    unlabeled_Generator_En = inter_utils.get_batch(unlabeled_dataset_en, batch_size, argument2idx, shuffle=False,
                                                                    lang="En", use_bert=True, para=True)
-                    unlabeled_Generator_Fr = inter_utils.get_batch(unlabeled_dataset_fr, batch_size, word2idx,
-                                                                   fr_word2idx,
-                                                                   lemma2idx, pos2idx, pretrain2idx, fr_pretrain2idx,
-                                                                   deprel2idx, argument2idx, idx2word, shuffle=False,
+                    unlabeled_Generator_Fr = inter_utils.get_batch(unlabeled_dataset_fr, batch_size, argument2idx, shuffle=False,
                                                                    lang="Fr",use_bert=True, para=True)
                     unlabeled_data_en = next(unlabeled_Generator_En)
                     unlabeled_data_fr = next(unlabeled_Generator_Fr)
-                if epoch > -1:
+                if epoch > 10:
                     loss, loss_2 = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True,
                                              self_constrain=False, use_bert=use_bert)
                     optimizer.zero_grad()
                     (loss + loss_2).backward()
-                    # (0.01*l2loss).backward()
                     optimizer.step()
                     if batch_i % 50 == 0:
                         print('para loss', loss.item(), loss_2.item())
@@ -382,8 +382,7 @@ if __name__ == '__main__':
                         = srl_model((unlabeled_data_en, unlabeled_data_fr), lang='En', unlabeled=True,
                                     self_constrain=True, use_bert=use_bert)
                     optimizer.zero_grad()
-                    (copy_loss_en + copy_loss_fr_noise + 0.01 * (
-                    SRL_domain_loss + compressor_domain_loss)).backward()
+                    (copy_loss_en + copy_loss_fr_noise).backward()
                     # (0.01*l2loss).backward()
                     optimizer.step()
 
@@ -391,9 +390,9 @@ if __name__ == '__main__':
                         print('constrain loss', copy_loss_en.item(), copy_loss_fr.item(),
                               copy_loss_en_noise.item(), copy_loss_fr_noise.item())
                         # print(coverage)
-                        print('trans loss', SRL_domain_loss.item(), compressor_domain_loss.item(),
-                              matcher_domain_loss.item())
-                """
+                        #print('trans loss', SRL_domain_loss.item(), compressor_domain_loss.item(),
+                        #      matcher_domain_loss.item())
+
                 if batch_i > 0 and batch_i % show_steps == 0:
                     srl_model.eval()
                     _, pred = torch.max(out, 1)
@@ -405,12 +404,12 @@ if __name__ == '__main__':
                     #eval_train_batch(epoch, batch_i, loss.item(), flat_argument, pred, argument2idx)
 
                     print('Zh test:')
-                    score, dev_output = eval_data(srl_model, elmo, dev_dataset_zh, batch_size, argument2idx,
+                    score, dev_output = eval_data(srl_model, elmo, dev_dataset_fr, batch_size, argument2idx,
                                                   idx2argument,
                                                   False,
                                                   dev_predicate_correct, dev_predicate_sum, lang='Fr', use_bert=use_bert)
-                    print('De test:')
-                    eval_data(srl_model, elmo, dev_dataset_de, batch_size, argument2idx,
+                    print('En test:')
+                    eval_data(srl_model, elmo, dev_dataset_en, batch_size, argument2idx,
                               idx2argument,
                               False,
                               dev_predicate_correct, dev_predicate_sum, lang='En', use_bert=use_bert)

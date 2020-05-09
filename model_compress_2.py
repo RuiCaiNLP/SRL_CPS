@@ -358,9 +358,9 @@ class SR_Model(nn.Module):
         SRL_input = output_SRL.view(self.batch_size, seq_len, -1)
         SRL_input = F.softmax(SRL_input, 2).detach()
         pred_recur,_ = self.SR_Compressor(SRL_input, pretrain_emb,
-                                        flag_emb.detach(), None, None, seq_len, para=False, use_bert=True)
+                                        flag_emb.detach(), None, seq_len, para=False, use_bert=True)
 
-        output_word,_ = self.SR_Matcher(pred_recur, pretrain_emb, flag_emb.detach(), None, seq_len, copy = True,
+        output_word,_ = self.SR_Matcher(pred_recur, pretrain_emb, flag_emb.detach(), seq_len, copy = True,
                                       para=False, use_bert=True)
 
         score4Null = torch.zeros_like(output_word[:, 1:2])
@@ -421,6 +421,56 @@ class SR_Model(nn.Module):
 
         return mask_en, mask_fr
 
+    def filter_sens_pair(self, SRL_out_en_en, SRL_out_en_fr, seq_len, seq_len_fr):
+        #SRL_pred = SRL_pred.view(self.batch_size, seq_len, self.target_vocab_size)
+        SRL_out_en_en = SRL_out_en_en.view(self.batch_size, seq_len, self.target_vocab_size)
+        SRL_out_en_fr = SRL_out_en_fr.view(self.batch_size, seq_len_fr, self.target_vocab_size)
+        #result_en = torch.max(SRL_pred, dim=2)[1].view(self.batch_size, seq_len)
+        result_en_en = torch.max(SRL_out_en_en, dim=2)[1].view(self.batch_size, seq_len)
+        result_en_fr = torch.max(SRL_out_en_fr, dim=2)[1].view(self.batch_size, seq_len_fr)
+
+        mask_en = np.ones((self.batch_size, seq_len))
+        mask_fr = np.ones((self.batch_size, seq_len_fr))
+        roles_en_en = np.zeros((self.batch_size, self.target_vocab_size)) - 1
+        roles_en_fr = np.zeros((self.batch_size, self.target_vocab_size)) - 1
+
+        # -1: no this role
+        # >=0: index of arguments
+        # -2: duplicate
+        for i in range(self.batch_size):
+            for j in range(seq_len):
+                this_result = result_en_en[i][j]
+                if this_result > 1:
+                    if roles_en_en[i][this_result] != -1:
+                        roles_en_en[i][this_result] = -2
+                    else:
+                        roles_en_en[i][this_result] = j
+
+        for i in range(self.batch_size):
+            for j in range(seq_len_fr):
+                this_result = result_en_fr[i][j]
+                if this_result > 1:
+                    if roles_en_fr[i][this_result] != -1:
+                        roles_en_fr[i][this_result] = -2
+                    else:
+                        roles_en_fr[i][this_result] = j
+
+
+        for i in range(self.batch_size):
+            en_found_roles_num = 0
+            co_found_roles_num = 0
+            for j in range(self.target_vocab_size):
+                if j <= 1:
+                    continue
+                if roles_en_en[i][j] >= 0:
+                    en_found_roles_num += 1
+                if roles_en_en[i][j] >= 0 and roles_en_fr[i][j] >= 0:
+                    co_found_roles_num += 1
+            if co_found_roles_num == 0 and en_found_roles_num > 1:
+                mask_en[i] = np.zeros((seq_len,))
+                mask_fr[i] = np.zeros((seq_len_fr,))
+
+        return mask_en, mask_fr
     def filter_word_fr(self, SRL_out_fr_en, SRL_out_fr_fr, seq_len, seq_len_fr):
         SRL_out_fr_en = SRL_out_fr_en.view(self.batch_size, seq_len, self.target_vocab_size)
         SRL_out_fr_fr = SRL_out_fr_fr.view(self.batch_size, seq_len_fr, self.target_vocab_size)
@@ -502,9 +552,6 @@ class SR_Model(nn.Module):
             bert_emb_fr_noise = gaussian(bert_emb_fr, isTrain, 0, 0.1).detach()
             bert_emb_fr = bert_emb_fr.detach()
 
-
-
-
             bert_input_ids_en = get_torch_variable_from_np(unlabeled_data_en['bert_input_ids'])
             bert_input_mask_en = get_torch_variable_from_np(unlabeled_data_en['bert_input_mask'])
             bert_out_positions_en = get_torch_variable_from_np(unlabeled_data_en['bert_out_positions'])
@@ -533,7 +580,7 @@ class SR_Model(nn.Module):
         SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
         SRL_input = F.softmax(SRL_input, 2)
         pred_recur, _ = self.SR_Compressor(SRL_input.detach(), bert_emb_en,
-                                        flag_emb.detach(), None, predicates_1D, seq_len, para=True, use_bert=True)
+                                        flag_emb.detach(), predicates_1D, seq_len, para=True, use_bert=True)
 
         seq_len_fr = flag_emb_fr.shape[1]
         SRL_output_fr, _ = self.SR_Labeler(bert_emb_fr, flag_emb_fr.detach(), predicates_1D_fr, seq_len_fr, para=True,
@@ -542,14 +589,14 @@ class SR_Model(nn.Module):
         SRL_input_fr = SRL_output_fr.view(self.batch_size, seq_len_fr, -1)
         SRL_input_fr = F.softmax(SRL_input_fr, 2)
         pred_recur_fr, _ = self.SR_Compressor(SRL_input_fr, bert_emb_fr,
-                                           flag_emb_fr.detach(), None, predicates_1D_fr, seq_len_fr, para=True,
+                                           flag_emb_fr.detach(), predicates_1D_fr, seq_len_fr, para=True,
                                            use_bert=True)
 
 
         """
         En event vector, En word
         """
-        output_word_en_en, _ = self.SR_Matcher(pred_recur.detach(), bert_emb_en, flag_emb.detach(), None, seq_len,
+        output_word_en_en, _ = self.SR_Matcher(pred_recur.detach(), bert_emb_en, flag_emb.detach(), seq_len,
                                             para=True, use_bert=True)
         score4Null = torch.zeros_like(output_word_en_en[:, 1:2])
         output_word_en_en = torch.cat((output_word_en_en[:, 0:1], score4Null, output_word_en_en[:, 1:]), 1)
@@ -558,7 +605,7 @@ class SR_Model(nn.Module):
         """
         Fr event vector, En word
         """
-        output_word_fr_en,_ = self.SR_Matcher(pred_recur_fr, bert_emb_en, flag_emb.detach(), None, seq_len,
+        output_word_fr_en,_ = self.SR_Matcher(pred_recur_fr, bert_emb_en, flag_emb.detach(),  seq_len,
                                             para=True, use_bert=True)
         score4Null = torch.zeros_like(output_word_fr_en[:, 1:2])
         output_word_fr_en = torch.cat((output_word_fr_en[:, 0:1], score4Null, output_word_fr_en[:, 1:]), 1)
@@ -567,7 +614,7 @@ class SR_Model(nn.Module):
         """
         En event vector, Fr word
         """
-        output_word_en_fr,_ = self.SR_Matcher(pred_recur.detach(), bert_emb_fr, flag_emb_fr.detach(), None, seq_len_fr,
+        output_word_en_fr,_ = self.SR_Matcher(pred_recur.detach(), bert_emb_fr, flag_emb_fr.detach(),  seq_len_fr,
                                             para=True, use_bert=True)
         score4Null = torch.zeros_like(output_word_en_fr[:, 1:2])
         output_word_en_fr = torch.cat((output_word_en_fr[:, 0:1], score4Null, output_word_en_fr[:, 1:]), 1)
@@ -575,23 +622,25 @@ class SR_Model(nn.Module):
         """
         Fr event vector, Fr word
          """
-        output_word_fr_fr,_ = self.SR_Matcher(pred_recur_fr, bert_emb_fr, flag_emb_fr.detach(), None, seq_len_fr,
+        output_word_fr_fr,_ = self.SR_Matcher(pred_recur_fr, bert_emb_fr, flag_emb_fr.detach(),  seq_len_fr,
                                             para=True, use_bert=True)
         score4Null = torch.zeros_like(output_word_fr_fr[:, 1:2])
         output_word_fr_fr = torch.cat((output_word_fr_fr[:, 0:1], score4Null, output_word_fr_fr[:, 1:]), 1)
 
-
+        mask_en, mask_fr = self.filter_sens_pair(output_word_en_en, output_word_en_fr, seq_len, seq_len_fr)
+        mask_en = get_torch_variable_from_np(mask_en)
+        mask_fr = get_torch_variable_from_np(mask_fr)
 
         unlabeled_loss_function = nn.KLDivLoss(reduction='none')
         output_word_en_en = F.softmax(output_word_en_en, dim=1).detach()
         output_word_fr_en = F.log_softmax(output_word_fr_en, dim=1)
-        loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en).sum(dim=1)#*mask_en_word.view(-1)
-        loss = loss.sum() / (self.batch_size * seq_len)
+        loss = unlabeled_loss_function(output_word_fr_en, output_word_en_en).sum(dim=1)*mask_en.view(-1)
+        loss = loss.sum() / mask_en.sum()
         output_word_en_fr = F.softmax(output_word_en_fr, dim=1).detach()
         output_word_fr_fr = F.log_softmax(output_word_fr_fr, dim=1)
-        loss_2 = unlabeled_loss_function(output_word_fr_fr, output_word_en_fr).sum(dim=1)#*mask_fr_word.view(-1)
+        loss_2 = unlabeled_loss_function(output_word_fr_fr, output_word_en_fr).sum(dim=1)*mask_fr.view(-1)
         #if mask_fr_word.sum().cpu().numpy() > 1:
-        loss_2 = loss_2.sum() / (self.batch_size * seq_len_fr)
+        loss_2 = loss_2.sum() / mask_fr.sum()
 
         return loss, loss_2
 
@@ -661,10 +710,10 @@ class SR_Model(nn.Module):
         SRL_input = SRL_output.view(self.batch_size, seq_len, -1)
         SRL_input = F.softmax(SRL_input, 2)
         pred_recur, compressor_h_en = self.SR_Compressor(SRL_input.detach(), bert_emb_en,
-                                                         flag_emb.detach(), None, predicates_1D, seq_len, para=True,
+                                                         flag_emb.detach(),  predicates_1D, seq_len, para=True,
                                                          use_bert=True)
 
-        output_word_en_en, matcher_h_en = self.SR_Matcher(pred_recur.detach(), bert_emb_en, flag_emb.detach(), None, seq_len,
+        output_word_en_en, matcher_h_en = self.SR_Matcher(pred_recur.detach(), bert_emb_en, flag_emb.detach(), seq_len,
                                                para=True, use_bert=True)
 
 
@@ -681,10 +730,10 @@ class SR_Model(nn.Module):
         SRL_input_fr = SRL_output_fr.view(self.batch_size, seq_len_fr, -1)
         SRL_input_fr = F.softmax(SRL_input_fr, 2)
         pred_recur_fr, compressor_h_fr = self.SR_Compressor(SRL_input_fr.detach(), bert_emb_fr,
-                                                            flag_emb_fr.detach(), None, predicates_1D_fr, seq_len_fr,
+                                                            flag_emb_fr.detach(),  predicates_1D_fr, seq_len_fr,
                                                             para=True,
                                                             use_bert=True)
-        output_word_fr_fr, matcher_h_fr = self.SR_Matcher(pred_recur_fr.detach(), bert_emb_fr, flag_emb_fr.detach(), None, seq_len_fr,
+        output_word_fr_fr, matcher_h_fr = self.SR_Matcher(pred_recur_fr.detach(), bert_emb_fr, flag_emb_fr.detach(), seq_len_fr,
                                                para=True, use_bert=True)
 
         real_labels = torch.empty((30 * seq_len_en, 1), dtype=torch.long).fill_(1).view(-1)
