@@ -1,5 +1,6 @@
 # Cross-lingual SRL
-ccodes and data for EMNLP 2020 paper Alignment-free Cross-lingual Semantic Role Labeling
+codes and data for EMNLP 2020 paper Alignment-free Cross-lingual Semantic Role Labeling
+if you have any problem, please email Rui.Cai@ed.ac.uk
 
 ## Training ##
 - Step1. Preprocess annotated source-language (English) data. One sentence may contain multiple sets of prd-args structure.
@@ -7,8 +8,8 @@ ccodes and data for EMNLP 2020 paper Alignment-free Cross-lingual Semantic Role 
         making sure that one sentence in the data only at maximum contains one set of prd-args proposition.
 
 - Step2. Preprocess parallel data, making sure that they are in the same format with source-language data. 
-         - Since parallel data is unlabled, you need to perform predicate identification and predicate alignment in advance.
-         - All data after prepocessing should be placed under directory ./temp
+   - Since parallel data is unlabled, you need to perform predicate identification and find predicate pairs in advance.
+   - All data after prepocessing should be placed under directory ./temp
 
 
 - Step3. Start the cross-lingual training.
