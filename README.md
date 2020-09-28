@@ -13,4 +13,5 @@ codes and data for EMNLP 2020 paper Alignment-free Cross-lingual Semantic Role L
 - Step3. Start the cross-lingual training.
    - sh train.sh
          
-
+## Manually Annotated Data ##
+- We manuanlly annotated 304 Chinese samples and 258 German Samples for evaluation,[New datasets available here](https://github.com/RuiCaiNLP/ZH_DE_Datasets)
