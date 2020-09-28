@@ -10,4 +10,6 @@ codes and data for EMNLP 2020 paper Alignment-free Cross-lingual Semantic Role L
 
 
 - Step3. Start the cross-lingual training.
-         - sh train.sh
+   - sh train.sh
+         
+
