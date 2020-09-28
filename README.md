@@ -6,7 +6,8 @@ codes and data for EMNLP 2020 paper Alignment-free Cross-lingual Semantic Role L
         So you should pre-process the data and split them in advance, 
         making sure that one sentence in the data only at maximum contains one set of prd-args proposition.
 
-- Step2. Preprocess parallel data, making sure that they are in the same format with source-language data.
+- Step2. Preprocess parallel data, making sure that they are in the same format with source-language data. All data after prepocessing
+         should be placed under directory ./temp
 
 
 - Step3. Start the cross-lingual training.
