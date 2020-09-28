@@ -1,6 +1,6 @@
 # Cross-lingual SRL
-codes and data for EMNLP 2020 paper Alignment-free Cross-lingual Semantic Role Labeling
-if you have any problem, please email Rui.Cai@ed.ac.uk
+Codes and data for EMNLP 2020 paper Alignment-free Cross-lingual Semantic Role Labeling. \\
+If you have any problem, please email Rui.Cai@ed.ac.uk
 
 ## Training ##
 - Step1. Preprocess annotated source-language (English) data. One sentence may contain multiple sets of prd-args structure.
