@@ -1,5 +1,5 @@
 # Cross-lingual SRL
-Codes and data for EMNLP 2020 paper Alignment-free Cross-lingual Semantic Role Labeling. \\
+Codes and data for EMNLP 2020 paper: Alignment-free Cross-lingual Semantic Role Labeling. 
 If you have any problem, please email Rui.Cai@ed.ac.uk
 
 ## Training ##
